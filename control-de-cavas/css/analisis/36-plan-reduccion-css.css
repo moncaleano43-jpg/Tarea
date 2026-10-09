@@ -95,3 +95,19 @@
 .an-inicio .pl-mas{align-self:flex-start}
 .an-in-p{padding:6px 0;font-size:13px;border-bottom:1px solid var(--line)}
 .an-inicio .pl-acc .btn{margin-top:10px;display:inline-block}
+
+/* Hallazgos y guía */
+.hz-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin:0 2px 12px}
+.hz-seg{display:flex;gap:4px;flex-wrap:wrap}
+.hz-seg button,.hz-print{font:13px var(--sans);color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:7px 12px;cursor:pointer}
+.hz-seg button.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.hz-doc{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 22px;color:var(--ink);font-size:14px;line-height:1.6;max-width:900px}
+.hz-doc .hz-h{margin:18px 0 6px;line-height:1.25}
+.hz-doc h2.hz-h{font-size:19px}.hz-doc h3.hz-h{font-size:16px}.hz-doc h4.hz-h{font-size:14px}
+.hz-doc p{margin:6px 0}.hz-doc ul,.hz-doc ol{margin:6px 0;padding-left:22px}
+.hz-doc code{background:var(--surface-2);padding:1px 5px;border-radius:5px;font-size:12.5px}
+.hz-doc blockquote{margin:8px 0;padding:4px 12px;border-left:3px solid var(--line);color:var(--ink-2)}
+.hz-tabla{overflow-x:auto;margin:10px 0}.hz-tabla table{border-collapse:collapse;width:100%;font-size:13px}
+.hz-tabla th,.hz-tabla td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.hz-tabla th{background:var(--surface-2)}
+@media print{.hz-bar{display:none}}

@@ -272,9 +272,11 @@
 
   function render(ctx, UI) {
     return `<p class="an-lead-s">Qué factores afectan a qué resultado, y cuáles no. Todo el histórico (estas relaciones necesitan muestra grande). Son asociaciones: indican por dónde investigar, no prueban la causa.</p>` +
-      mapa(ctx, UI) + UI.grid([efectos(ctx, UI), efectosArr(ctx, UI)], 2) + UI.grid([efectosRdf(ctx, UI), trasiegos(ctx, UI)], 2) + renderAgua(ctx, UI) + recuperacion(ctx, UI);
+      mapa(ctx, UI) + UI.grid([efectos(ctx, UI), efectosArr(ctx, UI)], 2) + UI.grid([efectosRdf(ctx, UI), trasiegos(ctx, UI)], 2) + renderAgua(ctx, UI) + recuperacion(ctx, UI) +
+      `<h2 class="an-sec">Más comprobaciones</h2>` + (A.FactoresExtra || []).map((f) => { try { return f(ctx, UI) || ''; } catch (e) { console.error(e); return ''; } }).join('');
   }
 
+  A.FactoresExtra = A.FactoresExtra || [];
   AN.registrar({ id: 'factores', label: 'Qué afecta a qué', orden: 1.7, render });
   B.lotesFx = lotes; B.modeloVel = modeloVel; B.modeloArr = modeloArr; B.modeloRdf = modeloRdf; B.ols = ols; B.grupoEquipo = grupoEquipo;
 

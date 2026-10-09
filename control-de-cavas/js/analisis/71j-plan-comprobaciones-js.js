@@ -1,0 +1,153 @@
+/* ============================================================
+   71j-plan-comprobaciones.js · «Más comprobaciones» (se muestran al final de «Qué afecta a qué»)
+   Lo que antes solo estaba en el informe: pares FV–SV del mismo lote, aseo previo del tanque, calidad del mosto,
+   viabilidad frente a velocidad y la prueba del llenado por encima de lo habitual (+30 Hl).
+   Todo se calcula con los datos cargados (todo el histórico).
+   ============================================================ */
+(function () {
+  'use strict';
+  const A = window.App;
+  if (!A || !A.PlanBase || !A.PlanBase.lotesFx || !A.An1 || !A.Analisis || !A.Charts || !A.Stats) return;
+  const An1 = A.An1, S = A.Stats, C = A.Charts, AN = A.Analisis, B = A.PlanBase;
+  const { fmt, esc } = AN;
+  const { vals, sum, mean, med, W, DAY } = An1;
+  const WARN = 'var(--warn,#a26a14)', EST = 'var(--est,#5d6f8c)', MUTED = 'var(--muted,#8a8a84)', POS = 'var(--pos,#3b7a59)';
+  const r1 = (v) => An1.round(v, 1);
+  const lc = (t) => String(t).charAt(0).toLowerCase() + String(t).slice(1);
+  const sg = (v, d = 2) => (v == null || !Number.isFinite(v) ? '—' : (v > 0 ? '+' : '') + fmt(v, d));
+  const pTxt = (p) => (p == null ? '—' : p < 0.001 ? 'menor que 0,001' : fmt(p, 3));
+  const vacio = (UI, t, msg) => UI.card(t, '', UI.vacio(msg));
+  const rng = (seed) => { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
+  const rho = (xs, ys) => { const pa = xs.map((x, i) => [x, ys[i]]).filter((p) => p[0] != null && p[1] != null && Number.isFinite(p[0]) && Number.isFinite(p[1])); if (pa.length < 40) return null; const s = S.spearman(pa.map((p) => p[0]), pa.map((p) => p[1])); return s ? { r: s.r, p: s.p, n: pa.length } : null; };
+
+  /* ======================= 1. FV y SV del mismo lote ======================= */
+  function pares(ctx) {
+    return An1.memo(ctx, 'planPares', () => {
+      const fv = B.fvHist(ctx), svAll = An1.sane('merma', ctx.todas('merma')).filter((r) => r.phase === 'SV' && r.input > 0 && r.loss != null && r.lossPct != null);
+      const tr = An1.sane('trasiego', ctx.todas('trasiego')).filter((r) => r.kind === 'Trasiego' && r.actualEnd && Number.isFinite(+r.destination))
+        .map((r) => ({ org: +((/UTQ[_ ]?(\d+)/i.exec(r.activity || '') || [])[1]), dest: +r.destination, fin: r.actualEnd })).filter((r) => Number.isFinite(r.org));
+      const byOrg = new Map(); tr.forEach((r) => { if (!byOrg.has(r.org)) byOrg.set(r.org, []); byOrg.get(r.org).push(r); });
+      const svBy = new Map(); svAll.slice().sort((a, b) => a.t - b.t).forEach((r) => { if (!svBy.has(r.tq)) svBy.set(r.tq, []); svBy.get(r.tq).push(r); });
+      const usados = new Set(), P = [];
+      fv.forEach((f) => {
+        const c = (byOrg.get(f.tq) || []).filter((r) => Math.abs(r.fin - f.t) < 1.5 * DAY); if (!c.length) return;
+        const t0 = c.reduce((a, b) => (Math.abs(a.fin - f.t) <= Math.abs(b.fin - f.t) ? a : b));
+        const s = (svBy.get(t0.dest) || []).find((x) => x.brand === f.brand && x.t > t0.fin && x.t - t0.fin < 12 * DAY && !usados.has(x.lote || x.id));
+        if (!s || s.lossPct <= -8 || s.lossPct >= 15) return;
+        usados.add(s.lote || s.id); P.push({ f, s });
+      });
+      const negSv = svAll.length ? (svAll.filter((r) => r.loss < 0).length / svAll.length) * 100 : null;
+      return { P, negSv, nSv: svAll.length, purgasSv: sum(svAll.map((r) => r.purges || 0)), lossSv: sum(vals(svAll, 'loss')) };
+    });
+  }
+  function cardPares(ctx, UI) {
+    const R = pares(ctx);
+    if (R.P.length < 40) return vacio(UI, 'Merma de FV y de SV del mismo lote', 'No se pudieron enlazar suficientes lotes entre fermentación y maduración (se enlazan por el trasiego que los une).');
+    const x = R.P.map((p) => p.f.lossPct), y = R.P.map((p) => p.s.lossPct), sp = S.spearman(x, y);
+    const lf = sum(R.P.map((p) => p.f.loss)), ls = sum(R.P.map((p) => p.s.loss)), inF = sum(R.P.map((p) => p.f.input)), inS = sum(R.P.map((p) => p.s.input));
+    const dif = med(R.P.map((p) => p.s.input - (p.f.input - p.f.loss)));
+    const pts = R.P.map((p) => ({ x: r1(p.f.lossPct), y: r1(p.s.lossPct), group: p.f.brand, label: `${p.f.lote} → ${p.s.lote}: FV ${fmt(p.f.lossPct, 1)} % · SV ${fmt(p.s.lossPct, 1)} %` }));
+    const l = `Cada punto es un lote: su merma en fermentación (FV) y en maduración (SV), enlazados por el trasiego que los une (${R.P.length} pares). ` +
+      `Cuando el FV pierde más, el SV tiende a perder menos (ρ = <b>${fmt(sp.r, 2)}</b>, p ${pTxt(sp.p)}): parte de lo que parece «merma» es diferencia de medición entre los dos tanques. ` +
+      `Merma FV <b>${fmt((lf / inF) * 100, 2)} %</b>, SV <b>${fmt((ls / inS) * 100, 2)} %</b>, FV + SV <b>${fmt(((lf + ls) / inF) * 100, 2)} %</b>: el SV no devuelve lo que pierde el FV. ` +
+      (dif != null && Math.abs(dif) < 1 ? `El volumen de entrada del SV es exactamente el de salida del FV (diferencia mediana ${fmt(dif, 0)} Hl): no se vuelve a medir. ` : '') +
+      (R.negSv != null ? `En el <b>${fmt(R.negSv, 0)} %</b> de los lotes de SV «sale» más cerveza de la que entró, y las purgas registradas en SV suman ${fmt(R.purgasSv / Math.max(1, R.lossSv), 1)} veces su merma: el balance de maduración <b>no sirve para decidir</b>. ` : '') +
+      `<b>Qué hacer:</b> medir con el mismo método y la misma hora la salida del FV y la entrada del SV; hasta entonces, mirar FV y SV juntos y no por separado.`;
+    return An1.tarjeta(UI, 'Merma de FV y de SV del mismo lote', 'Cada punto = un lote. Eje horizontal: merma FV (%); vertical: merma SV (%). Todo el histórico.',
+      C.scatter({ w: W.half, h: 300, points: pts, xLabel: 'Merma FV (%)', yLabel: 'Merma SV (%)', regression: true, r: sp.r, toolbar: true, id: 'ch-cmp-pares' }), l, { tono: 'warn' });
+  }
+
+  /* ======================= 2. Aseo previo del tanque ======================= */
+  function cardAseoPrevio(ctx, UI) {
+    const L = B.lotesFx(ctx).rows;
+    const defs = [['Días desde el aseo', 'gapAs'], ['Minutos de aseo', 'minAs'], ['Caudal del aseo (l/min)', 'flowAs']];
+    const fila = (n, f) => ({ n, f, vSin: rho(L.map((r) => r[f]), L.map((r) => r.v75)), vAdj: rho(L.map((r) => r[f]), L.map((r) => r.oVel)), mer: rho(L.map((r) => r[f]), L.map((r) => r.oMerma)), arr: rho(L.map((r) => r[f]), L.map((r) => r.oArr)) });
+    const F = defs.map(([n, f]) => fila(n, f)).filter((x) => x.vSin);
+    if (F.length < 2) return vacio(UI, 'Aseo previo del fermentador', 'Se necesitan al menos 40 fermentaciones con el aseo previo registrado.');
+    const c = (o) => (o ? `${fmt(o.r, 2)}${o.p < 0.01 ? ' *' : ''}` : '—');
+    const eng = F.filter((x) => x.vSin && x.vSin.p < 0.01 && !(x.vAdj && x.vAdj.p < 0.01));
+    const real = F.filter((x) => [x.vAdj, x.mer, x.arr].some((o) => o && o.p < 0.01));
+    const l = `Relación (ρ de Spearman) entre el último aseo del fermentador antes de llenarlo y el resultado del lote. * = relación real (p &lt; 0,01). ` +
+      (eng.length ? `<b>${esc(eng.map((x) => x.n).join(', '))}</b> parecía relacionarse con la velocidad (ρ = ${fmt(eng[0].vSin.r, 2)}), pero era el tamaño del tanque: los tanques grandes se limpian con otro caudal y fermentan más rápido; ya ajustado por marca y tamaño desaparece. ` : '') +
+      (real.length ? `Con relación real: ${real.map((x) => esc(lc(x.n))).join(', ')}. ` : '<b>El aseo previo no afecta a la velocidad, el arranque ni la merma del lote.</b> ') +
+      `<b>Qué hacer:</b> no cambiar el aseo de los fermentadores pensando en mejorar la fermentación o la merma; hay otros lugares donde actuar.`;
+    return UI.card('Aseo previo del fermentador: ¿afecta al lote?', 'Último aseo «Cada uso» del FV dentro de los 10 días anteriores al llenado. Todo el histórico.',
+      UI.tabla([{ k: 'n', t: 'Factor' }, An1.colNum('k', 'Lotes', 0), { k: 'a', t: 'Velocidad sin ajustar tamaño' }, { k: 'b', t: 'Velocidad ajustada' }, { k: 'c', t: 'Arranque' }, { k: 'd', t: 'Merma' }],
+        F.map((x) => ({ n: x.n, k: x.vSin.n, a: c(x.vSin), b: c(x.vAdj), c: c(x.arr), d: c(x.mer) })), { id: 'tb-cmp-aseo', nombre: 'aseo-previo', max: 5 }) + UI.lectura(l, real.length ? 'warn' : ''));
+  }
+
+  /* ======================= 3. Calidad del mosto (extracto original) ======================= */
+  function cardMosto(ctx, UI) {
+    const L = B.lotesFx(ctx).rows.filter((r) => r.eo != null);
+    if (L.length < 80) return vacio(UI, 'Calidad del mosto', 'Se necesitan al menos 80 fermentaciones.');
+    const marcas = [...new Set(L.map((r) => r.brand))].map((b) => {
+      const x = L.filter((r) => r.brand === b); if (x.length < 15) return null;
+      const e = vals(x, 'eo'); let sp = null; try { sp = A.Hist2 && A.Hist2.spec && A.Hist2.spec(b); } catch (er) { sp = null; }
+      const lim = sp && sp.eo ? sp.eo : null, dentro = lim ? (e.filter((v) => (lim.inf == null || v >= lim.inf) && (lim.sup == null || v <= lim.sup)).length / e.length) * 100 : null;
+      return { b, n: x.length, media: mean(e), sd: S.sd(e), dentro };
+    }).filter(Boolean);
+    const rs = [['Velocidad', 'oVel'], ['Arranque', 'oArr'], ['Extracto final', 'oRdf'], ['Merma', 'oMerma']].map(([n, o]) => ({ n, r: rho(L.map((r) => r.eoDev), L.map((r) => r[o])) })).filter((x) => x.r);
+    const algo = rs.filter((x) => x.r.p < 0.01);
+    const peor = marcas.slice().sort((a, b) => b.sd - a.sd)[0];
+    const l = `Desviación estándar del extracto original (°P) de cada marca y porcentaje de lotes dentro del límite de la hoja de especificaciones. El mosto está <b>muy bien controlado</b>: desviaciones de ${fmt(Math.min(...marcas.map((m) => m.sd)), 2)} a ${fmt(Math.max(...marcas.map((m) => m.sd)), 2)} °P` +
+      (marcas.every((m) => m.dentro != null) ? ` y ${fmt(Math.min(...marcas.map((m) => m.dentro)), 0)} a ${fmt(Math.max(...marcas.map((m) => m.dentro)), 0)} % de los lotes dentro de especificación. ` : '. ') +
+      (peor ? `La marca con más variación es <b>${esc(peor.b)}</b> (${fmt(peor.sd, 2)} °P). ` : '') +
+      (algo.length ? `Su desvío se relaciona con ${algo.map((x) => esc(lc(x.n))).join(', ')}. ` : '<b>Lo poco que varía el extracto original no se relaciona con ninguna medida del lote</b> (velocidad, arranque, extracto final ni merma). ') +
+      `<b>Qué hacer:</b> nada sobre el extracto original; la variación entre lotes está en otro lado.`;
+    return An1.tarjeta(UI, 'Calidad del mosto: extracto original', 'Desviación estándar (°P) por marca. Todo el histórico.',
+      C.bars({ w: W.half, h: 240, unit: '°P', toolbar: true, id: 'ch-cmp-mosto', yFmt: (v) => fmt(v, 2), categories: marcas.map((m) => `${m.b}${m.dentro != null ? ` (${fmt(m.dentro, 0)} % en espec.)` : ''}`), series: [{ name: 'Desviación del extracto original', values: marcas.map((m) => An1.round(m.sd, 3)), color: EST }] }), l);
+  }
+
+  /* ======================= 4. Viabilidad frente a velocidad ======================= */
+  function cardViabilidad(ctx, UI) {
+    const L = B.lotesFx(ctx).rows.filter((r) => r.viab != null && r.gen != null && r.v75 != null);
+    if (L.length < 120) return vacio(UI, 'La viabilidad y la velocidad', 'Se necesitan al menos 120 fermentaciones con viabilidad y generación.');
+    const lr = S.linreg(L.map((r) => r.gen), L.map((r) => r.v75)); if (!lr) return '';
+    const e = L.map((r) => r.v75 - lr.predict(r.gen)), q1 = S.quantile(L.map((r) => r.viab), 1 / 3), q2 = S.quantile(L.map((r) => r.viab), 2 / 3);
+    const gr = [['Viabilidad baja', (v) => v <= q1], ['Media', (v) => v > q1 && v <= q2], ['Alta', (v) => v > q2]].map(([n, f]) => { const idx = L.map((r, i) => i).filter((i) => f(L[i].viab)); return { n: `${n} (${idx.length})`, raw: mean(idx.map((i) => L[i].v75)), adj: mean(idx.map((i) => e[i])) }; });
+    const s0 = S.spearman(L.map((r) => r.viab), L.map((r) => r.v75)), s1 = S.spearman(L.map((r) => r.viab), e), conf = s0 && s0.p < 0.01 && !(s1 && s1.p < 0.01);
+    const l = `Horas hasta 75 % (frente a lo normal de la marca) según la viabilidad de la levadura: sin controlar (gris) y comparando lotes de la misma generación (azul). ` +
+      (conf ? `Sin controlar parece que más viabilidad fermenta más lento (ρ = ${fmt(s0.r, 2)}), pero es porque <b>la viabilidad baja con la generación</b> y la generación más alta fermenta más rápido; dentro de la misma generación la relación desaparece (ρ = ${fmt(s1 ? s1.r : 0, 2)}). ` : `La relación entre viabilidad y velocidad es ρ = ${fmt(s0 ? s0.r : 0, 2)} (${s0 && s0.p < 0.01 ? 'real' : 'no se ve relación'}). `) +
+      `<b>Qué hacer:</b> decidir cuándo retirar la levadura por su generación y una viabilidad mínima acordada con calidad, no esperando que la viabilidad por sí sola acelere o frene la fermentación.`;
+    return An1.tarjeta(UI, 'La viabilidad de la levadura y la velocidad', 'Promedio de horas a 75 % según el tercio de viabilidad. Todo el histórico.',
+      C.bars({ w: W.half, h: 260, unit: 'h', toolbar: true, id: 'ch-cmp-viab', categories: gr.map((g) => g.n), series: [{ name: 'Sin controlar la generación', values: gr.map((g) => r1(g.raw)), color: MUTED }, { name: 'Misma generación', values: gr.map((g) => r1(g.adj)), color: EST }], refs: [{ y: 0, label: '', dashed: false }] }), l);
+  }
+
+  /* ======================= 5. Llenado por encima de lo habitual (+30 Hl): la prueba completa ======================= */
+  function llenadoPrueba(ctx) {
+    return An1.memo(ctx, 'planLlenado30', () => {
+      const rs = B.fvHist(ctx).map((r) => ({ ...r })); if (rs.length < 150) return null;
+      const hab = {}; ['normal', 'grande'].forEach((c) => { hab[c] = med(vals(rs.filter((r) => r.cls === c), 'input')); });
+      rs.forEach((r) => { r.exc = r.input - (hab[r.cls] || 0); r.str = r.brand + '|' + r.cls; });
+      const tasa = (xs) => { const i = sum(vals(xs, 'input')); return i > 0 ? (sum(vals(xs, 'loss')) / i) * 100 : null; };
+      const alto = rs.filter((r) => r.exc > 30), base = rs.filter((r) => Math.abs(r.exc) <= 10);
+      const strat = (xs) => { let ex = 0, n = 0; new Set(xs.map((r) => r.str)).forEach((k) => { const g = xs.filter((r) => r.str === k), hi = g.filter((r) => r.exc > 30), ok = g.filter((r) => Math.abs(r.exc) <= 10); if (hi.length >= 3 && ok.length >= 8) { ex += sum(vals(hi, 'loss')) - sum(vals(hi, 'input')) * (sum(vals(ok, 'loss')) / sum(vals(ok, 'input'))); n += hi.length; } }); return { ex, n }; };
+      const obs = strat(rs), R = rng(30303), grp = new Map(); rs.forEach((r, i) => { if (!grp.has(r.str)) grp.set(r.str, []); grp.get(r.str).push(i); });
+      let ge = 0; const BP = 200;
+      for (let b = 0; b < BP; b++) { const sh = rs.map((r) => ({ ...r })); grp.forEach((idx) => { const v = idx.map((i) => rs[i].exc); for (let i = v.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); const t = v[i]; v[i] = v[j]; v[j] = t; } idx.forEach((i, q) => { sh[i].exc = v[q]; }); }); if (strat(sh).ex >= obs.ex) ge++; }
+      const pPerm = (ge + 1) / (BP + 1);
+      const pend = (xs) => { const g = new Map(); xs.forEach((r) => { if (!g.has(r.str)) g.set(r.str, []); g.get(r.str).push(r); }); let sxy = 0, sxx = 0; g.forEach((v) => { const my = mean(v.map((r) => r.lossPct)), mx = mean(v.map((r) => r.exc / 100)); v.forEach((r) => { const x = r.exc / 100 - mx; sxy += x * (r.lossPct - my); sxx += x * x; }); }); return sxx > 0 ? sxy / sxx : null; };
+      const b0 = pend(rs), tqs = [...new Set(rs.map((r) => r.tq))], bs = [];
+      for (let b = 0; b < 200; b++) { const xs = []; for (let k = 0; k < tqs.length; k++) { const t = tqs[Math.floor(R() * tqs.length)]; rs.forEach((r) => { if (r.tq === t) xs.push(r); }); } const v = pend(xs); if (v != null) bs.push(v); }
+      bs.sort((a, b) => a - b);
+      const mid = med(rs.map((r) => r.t)), p1 = pend(rs.filter((r) => r.t <= mid)), p2 = pend(rs.filter((r) => r.t > mid));
+      const shareL = alto.length ? (alto.filter((r) => r.brand === 'LIGHT').length / alto.length) * 100 : null, shareL0 = (rs.filter((r) => r.brand === 'LIGHT').length / rs.length) * 100;
+      return { n: rs.length, nAlto: alto.length, tAlto: tasa(alto), tBase: tasa(base), ex: obs.ex, nEx: obs.n, pPerm, b0, lo: bs[Math.floor(bs.length * 0.025)], hi: bs[Math.ceil(bs.length * 0.975) - 1], p1, p2, hab, shareL, shareL0, excMed: mean(alto.map((r) => r.exc)) };
+    });
+  }
+  function cardLlenado(ctx, UI) {
+    const R = llenadoPrueba(ctx);
+    if (!R) return vacio(UI, 'Llenar más de 30 Hl por encima de lo habitual', 'Se necesitan al menos 150 lotes de fermentación con merma calculada.');
+    const real = R.pPerm < 0.05 && R.lo > 0;
+    const l = `Los ${R.nAlto} lotes con más de 30 Hl por encima del llenado habitual de su tanque (${fmt(R.hab.normal, 0)} Hl en los normales${R.hab.grande ? `, ${fmt(R.hab.grande, 0)} Hl en los grandes` : ''}) pierden <b>${fmt(R.tAlto, 2)} %</b> frente a <b>${fmt(R.tBase, 2)} %</b> de los lotes llenados como siempre. ` +
+      `Pero <b>${fmt(R.shareL, 0)} %</b> de esos lotes son de Light (que es el ${fmt(R.shareL0, 0)} % de todos), y Light ya pierde más. Comparando solo dentro de la misma marca y tamaño de tanque: <b>${fmt(R.ex, 0)} Hl de más</b> en ${R.nEx} lotes (≈ ${fmt(R.ex / Math.max(1, R.nEx), 0)} Hl por lote), con p = ${pTxt(R.pPerm)} (prueba de permutación). ` +
+      `La pendiente es ${sg(R.b0, 2)} puntos de merma por cada +100 Hl de llenado, con intervalo de ${sg(R.lo, 2)} a ${sg(R.hi, 2)} (por tanque)` + (R.p1 != null && R.p2 != null ? `; en la primera mitad de los lotes ${sg(R.p1, 2)} y en la segunda ${sg(R.p2, 2)}` : '') + '. ' +
+      (real ? '<b>Hay evidencia de que llenar de más sube la merma</b>; conviene probar un tope de llenado y medir el resultado.' : '<b>Los datos sugieren una tendencia pero no la demuestran</b> (p ≥ 0,05 y el intervalo incluye cero): no es base suficiente para fijar un tope. Para saberlo con certeza haría falta un piloto: alternar lotes con llenado habitual y lotes con +40 a +60 Hl, de 40 lotes por grupo como mínimo.') +
+      ` Con tan pocos lotes, un efecto de este tamaño es difícil de detectar.`;
+    return An1.tarjeta(UI, 'Llenar más de 30 Hl por encima de lo habitual: ¿sube la merma?', 'Prueba completa, dentro de cada marca y tamaño de tanque. Todo el histórico.',
+      C.bars({ w: W.half, h: 240, unit: '%', toolbar: true, id: 'ch-cmp-llenado', categories: ['Llenado habitual (±10 Hl)', `Más de +30 Hl (${R.nAlto} lotes)`], series: [{ name: 'Merma', values: [r1(R.tBase), r1(R.tAlto)], color: EST }] }), l, { tono: real ? 'warn' : '' });
+  }
+
+  A.FactoresExtra = A.FactoresExtra || [];
+  A.FactoresExtra.push((ctx, UI) => UI.grid([cardPares(ctx, UI), cardLlenado(ctx, UI)], 2) + UI.grid([cardViabilidad(ctx, UI), cardMosto(ctx, UI)], 2) + cardAseoPrevio(ctx, UI));
+})();

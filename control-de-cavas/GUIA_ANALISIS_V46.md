@@ -6,6 +6,7 @@ Todo lo nuevo está en **Análisis**, se calcula en vivo con los datos cargados 
 
 | Pestaña | Para qué sirve | Archivo |
 |---|---|---|
+| **Hallazgos y guía** | Informe, fundamento del llenado y esta guía, legibles en el programa. | `71k-plan-hallazgos-js.js` |
 | **Informe del analista** | Lo que revisaría un analista cada día: qué cambió desde la última visita, lo más importante hoy, dónde está la variación que todavía no se explica y qué dato nuevo ayudaría a predecir mejor, experimentos propuestos, preguntas para planta (con notas) y resumen copiable para la reunión. | `js/analisis/71i-plan-analista-js.js` |
 | **Resumen semanal** | Última semana frente a la anterior, alertas, tanques por vigilar y acciones. Se imprime / guarda en PDF o se copia como texto. | `js/analisis/71g-plan-semana-js.js` |
 | **Dónde actuar** | Plan en orden, palancas de merma y agua, qué cambió, qué no explica la merma, recuperación, aseos, trasiegos, proyección y datos que faltan. | `71b-plan-reduccion-js.js`, `71c-plan-profundo-js.js` |
@@ -63,3 +64,6 @@ Las notas y casillas de «Preguntas que llevaría a planta» y la comparación �
 - El balance de maduración (SV) no es confiable (casi la mitad de los lotes «gana» volumen): no se usa para decidir.
 - Hay filas con fecha futura en el archivo (1 de maduración, 2 de aseos): probablemente errores de captura.
 - La proyección de merma y agua tiene un error típico de ±7 % a ±13 % al mes; bajarlo exige datos nuevos (ver «Qué datos faltan»).
+
+## Hallazgos y guía (dentro del programa)
+La pestaña **Hallazgos y guía** muestra el informe de hallazgos, el fundamento de la prueba de llenado (+30 Hl) y esta guía, para revisarlos sin salir del programa (con botón de imprimir/PDF). Es una foto del 9-oct-2026: se regenera desde los .md con el script que crea `71k-datos-hallazgos.js`. Las comprobaciones con cálculo en vivo (merma FV–SV del mismo lote, aseo previo, calidad del mosto, viabilidad vs velocidad y prueba completa del llenado) están al final de **Qué afecta a qué**, en «Más comprobaciones» (`71j-plan-comprobaciones-js.js`).
