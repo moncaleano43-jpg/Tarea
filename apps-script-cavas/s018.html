@@ -1,0 +1,31 @@
+<script>
+
+(function(){
+  // Immediate press feedback, matching Apple's pointer-down feedback principle.
+  const pressable='button,a,[data-go]';
+  document.addEventListener('pointerdown',function(e){
+    const el=e.target.closest&&e.target.closest(pressable);
+    if(!el || el.disabled) return;
+    el.classList.add('is-pressed');
+    const clear=()=>el.classList.remove('is-pressed');
+    window.addEventListener('pointerup',clear,{once:true,passive:true});
+    window.addEventListener('pointercancel',clear,{once:true,passive:true});
+  },{passive:true});
+
+  // Use View Transitions when supported. It falls back to the existing hash renderer.
+  const nativeGo=window.App&&window.App.go;
+  if(typeof nativeGo==='function' && !window.__appleGoWrapped){
+    window.__appleGoWrapped=true;
+    window.App.go=function(dest){
+      const run=()=>nativeGo.call(window.App,dest);
+      if(document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches){
+        try{ document.startViewTransition(run); }catch(e){ run(); }
+      }else run();
+    };
+  }
+
+  // Theme toggle: handled directly by the theme button's click handler.
+  // Do not add a second capture listener here, otherwise the theme would toggle twice.
+})();
+
+</script>

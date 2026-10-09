@@ -1,0 +1,123 @@
+<script>
+
+/* ============================================================
+   util.js — utilidades generales
+   ============================================================ */
+const App = window.App = window.App || {};
+App.V = App.V || {};
+App.U = (function(){
+  const HOUR = 3600e3, DAY = 24*HOUR;
+  const $ = (s,r=document)=>r.querySelector(s);
+  const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
+  const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const num = v => { if(v===""||v==null) return null; const n=Number(String(v).replace(",",".")); return isFinite(n)?n:null; };
+  const pad = n => String(n).padStart(2,"0");
+  const parseDT = s => { if(!s) return null; if(s instanceof Date) return isNaN(s)?null:s; const d=new Date(s); return isNaN(d)?null:d; };
+  const toIn = d => d ? d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours())+":"+pad(d.getMinutes()) : "";
+  const MES = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
+  const fmt = d => { d=parseDT(d); return d ? pad(d.getDate())+"/"+pad(d.getMonth()+1)+"/"+d.getFullYear()+" "+pad(d.getHours())+":"+pad(d.getMinutes()) : "—"; };
+  const fmtS = d => { d=parseDT(d); return d ? pad(d.getDate())+"/"+pad(d.getMonth()+1)+" "+pad(d.getHours())+":"+pad(d.getMinutes()) : "—"; };
+  const fmtL = d => { d=parseDT(d); return d ? pad(d.getDate())+" "+MES[d.getMonth()]+" "+d.getFullYear()+" - "+pad(d.getHours())+":"+pad(d.getMinutes()) : "—"; };
+  const f = (v,dec=2) => v==null||!isFinite(v) ? "—" : Number(v).toFixed(dec).replace(".",",");
+  const pc = (v,dec=1) => v==null||!isFinite(v) ? "—" : f(v*100,dec)+" %";
+  const dur = ms => { const a=Math.abs(ms), d=Math.floor(a/DAY), h=Math.floor((a%DAY)/HOUR), m=Math.floor((a%HOUR)/60000);
+    return (d?d+" d ":"")+pad(h)+" h "+pad(m)+" min"; };
+  const countdown = (target, now=Date.now()) => { if(!target) return ""; const ms=+target-now; return ms>=0?"Faltan "+dur(ms):"Hace "+dur(ms); };
+  const clone = o => JSON.parse(JSON.stringify(o==null?{}:o));
+  const getP = (o,p) => p.split(".").reduce((a,k)=>a==null?undefined:a[k],o);
+  const setP = (o,p,v) => { const ks=p.split("."); let a=o; ks.slice(0,-1).forEach(k=>{ if(a[k]==null||typeof a[k]!=="object") a[k]={}; a=a[k]; }); a[ks[ks.length-1]]=v; };
+  const last = a => a&&a.length ? a[a.length-1] : null;
+  const byT = (a,k="t") => (a||[]).slice().sort((x,y)=>String(x[k]).localeCompare(String(y[k])));
+  const median = a => { const v=a.filter(x=>x!=null&&isFinite(x)).sort((x,y)=>x-y); if(!v.length) return null; const m=Math.floor(v.length/2); return v.length%2?v[m]:(v[m-1]+v[m])/2; };
+  const mean = a => { const v=a.filter(x=>x!=null&&isFinite(x)); return v.length? v.reduce((s,x)=>s+x,0)/v.length : null; };
+  let toastT; const toast = m => { const t=$("#toast"); if(!t) return; t.textContent=m; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),3200); };
+  function diff(a,b,prefix=""){
+    const out=[]; const keys=new Set([...Object.keys(a||{}),...Object.keys(b||{})]);
+    keys.forEach(k=>{ if(["actualizado","creado"].includes(k)) return;
+      const x=(a||{})[k], y=(b||{})[k], p=prefix?prefix+"."+k:k;
+      if(x&&y&&typeof x==="object"&&typeof y==="object"&&!Array.isArray(x)&&!Array.isArray(y)) out.push(...diff(x,y,p));
+      else if(JSON.stringify(x??null)!==JSON.stringify(y??null)) out.push({campo:p,antes:x??null,despues:y??null});
+    });
+    return out;
+  }
+  App.D = {
+    pend(now=Date.now()){ return App.pendientes().map(t=>{ const r=App.Calc.tanque(t,now); return {t,r,st:App.Calc.estado(r,now)}; }); },
+    cols(now=Date.now()){ return Object.entries(App.S.colectores).map(([id,c])=>({id,c,st:App.Calc.estadoColector(c,now)})); }
+  };
+  return {HOUR,DAY,$,$$,esc,num,pad,parseDT,toIn,fmt,fmtS,fmtL,f,pc,dur,countdown,clone,getP,setP,last,byT,median,mean,toast,diff};
+})();
+
+/* ============================================================
+   components.js — UI base
+   ============================================================ */
+App.UI = (function(){
+  const {esc,fmt,fmtL,f,pc,countdown,toIn,num,$,parseDT} = App.U;
+  const badge=(txt,cls)=>`<span class="b ${cls}">${esc(txt)}</span>`;
+  const cdCell=(d,opts={})=>{ d=parseDT(d); if(!d) return `<span class="muted">${opts.empty||"—"}</span>`;
+    return `<span>${opts.long?fmtL(d):App.U.fmtS(d)}</span><span class="cd${+d<Date.now()?" past":""}" data-cd="${+d}">${countdown(d)}</span>`; };
+  function tickCountdowns(){ const now=Date.now(); document.querySelectorAll("[data-cd]").forEach(el=>{ const t=+el.dataset.cd; el.textContent=countdown(t,now); el.classList.toggle("past",t<now); });
+    document.querySelectorAll("[data-cdtxt]").forEach(el=>{ const t=+el.dataset.cdtxt; if(!t) return; el.textContent=el.dataset.cdlab+" "+App.C.rel(t,now); }); }
+  setInterval(tickCountdowns,30000);
+  function input(fd,val){
+    const v=val==null?"":val, n=`name="${fd.k}"`, req=fd.req?"required":"";
+    if(fd.t==="dt") return `<input ${n} type="datetime-local" value="${esc(v)}" ${req}>`;
+    if(fd.t==="n") return `<input ${n} type="number" step="any" inputmode="decimal" value="${esc(v)}" ${req} ${fd.ph?`placeholder="${esc(fd.ph)}"`:""}>`;
+    if(fd.t==="pct") return `<input ${n} type="number" step="any" inputmode="decimal" value="${v===""?"":Math.round(v*10000)/100}" placeholder="%" ${req}>`;
+    if(fd.t==="pwd") return `<input ${n} type="password" autocomplete="off" ${req}>`;
+    if(fd.t==="ta") return `<textarea ${n} ${req} ${fd.ph?`placeholder="${esc(fd.ph)}"`:""}>${esc(v)}</textarea>`;
+    const opts=fd.t==="marca"?App.MARCAS:fd.t==="sino"?["SI","NO"]:fd.opts;
+    if(opts) return `<select ${n} ${req}><option value=""></option>${opts.map(o=>{ const [val,lab]=Array.isArray(o)?o:[o,o]; return `<option value="${esc(val)}" ${String(val)===String(v)?"selected":""}>${esc(lab)}</option>`; }).join("")}</select>`;
+    return `<input ${n} type="text" value="${esc(v)}" ${req} ${fd.ph?`placeholder="${esc(fd.ph)}"`:""} ${fd.upper?'style="text-transform:uppercase"':""}>`;
+  }
+  function read(el,fd){ const v=el.value; if(fd.t==="n") return num(v); if(fd.t==="pct"){ const x=num(v); return x==null?null:(x>1?x/100:x); } if(fd.upper) return v.trim().toUpperCase()||null; return v===""?null:v; }
+  function fieldsHTML(fields,vals){ return `<div class="fg">${fields.map(fd=>fd.sep?`<div style="grid-column:1/-1;font-weight:600;margin-top:6px">${esc(fd.sep)}</div>`:`<label class="f ${fd.req?"req":""}" ${fd.wide?'style="grid-column:1/-1"':""}><span>${esc(fd.l)}</span>${input(fd,App.U.getP(vals||{},fd.k))}${fd.help?`<small class="muted">${esc(fd.help)}</small>`:""}</label>`).join("")}</div>`; }
+  let dlgN=0;
+  function form(opts){
+    return new Promise(res=>{
+      const id="dlg"+(++dlgN), d=document.createElement("dialog"); d.id=id; if(opts.wide) d.className="wide";
+      const mot=opts.motivo?`<label class="f ${opts.motivo==="req"?"req":""}" style="margin-top:12px"><span>Motivo del cambio</span><input name="__motivo" type="text" ${opts.motivo==="req"?"required":""} placeholder="Ej.: corrección por digitación"></label>`:"";
+      d.innerHTML=`<form class="dlg" method="dialog" novalidate><header><h3>${esc(opts.title)}</h3><button class="btn sm" type="button" data-x>Cerrar</button></header>
+        <div class="bd">${opts.intro?`<p class="muted" style="margin-top:0">${opts.intro}</p>`:""}${opts.extra||""}${fieldsHTML(opts.fields||[],opts.values)}${mot}<div class="ferr"></div></div>
+        <footer>${opts.danger?`<button class="btn dan" type="button" data-danger>${esc(opts.danger)}</button><span class="spacer"></span>`:""}<button class="btn" type="button" data-x>Cancelar</button><button class="btn pri" type="submit">${esc(opts.ok||"Guardar")}</button></footer></form>`;
+      document.body.appendChild(d);
+      const close=v=>{ d.close(); d.remove(); res(v); };
+      d.addEventListener("cancel",e=>{ e.preventDefault(); close(null); });
+      d.querySelectorAll("[data-x]").forEach(b=>b.onclick=()=>close(null));
+      const dz=d.querySelector("[data-danger]"); if(dz) dz.onclick=()=>close({__danger:true});
+      d.querySelector("form").addEventListener("submit",e=>{ e.preventDefault(); const fm=e.target, out={};
+        const miss=(opts.fields||[]).filter(fd=>fd.req&&!fd.sep&&!fm.elements[fd.k].value);
+        if(miss.length){ d.querySelector(".ferr").innerHTML=`<div class="errbox">Complete: ${miss.map(x=>esc(x.l)).join(", ")}.</div>`; return; }
+        (opts.fields||[]).forEach(fd=>{ if(fd.sep) return; App.U.setP(out,fd.k,read(fm.elements[fd.k],fd)); });
+        if(fm.elements.__motivo){ out.__motivo=fm.elements.__motivo.value.trim(); if(opts.motivo==="req"&&!out.__motivo){ d.querySelector(".ferr").innerHTML=`<div class="errbox">Indique el motivo del cambio.</div>`; return; } }
+        const ve=opts.validate&&opts.validate(out); if(ve){ d.querySelector(".ferr").innerHTML=`<div class="errbox">${esc(ve)}</div>`; return; }
+        close(out); });
+      d.showModal(); if(opts.onOpen) opts.onOpen(d);
+    });
+  }
+  function info(title,body,{wide=false,actions=""}={}){
+    const d=document.createElement("dialog"); if(wide) d.className="wide";
+    d.innerHTML=`<div class="dlg"><header><h3>${esc(title)}</h3><button class="btn sm" type="button" data-x>Cerrar</button></header><div class="bd">${body}</div>${actions?`<footer>${actions}</footer>`:""}</div>`;
+    document.body.appendChild(d); d.querySelectorAll("[data-x]").forEach(b=>b.onclick=()=>{ d.close(); d.remove(); });
+    d.addEventListener("close",()=>d.remove()); d.showModal(); return d;
+  }
+  async function confirm(title,txt,ok="Confirmar"){ const r=await form({title,intro:txt,fields:[],ok}); return !!r; }
+  const stateColor=c=>({ok:"var(--st-lista)",prox:"var(--st-prox)",att:"var(--st-vence)",crit:"var(--st-vencida)",none:"var(--st-espera)",info:"var(--accent)"}[c]||"var(--line)");
+  return {badge,cdCell,tickCountdowns,form,info,confirm,fieldsHTML,stateColor};
+})();
+
+App.UI.modal = function(title, bodyHTML, {ok="Guardar", cancel="Cancelar", wide=false, onOpen, onSubmit, onClose}={}){
+  const d=document.createElement("dialog"); if(wide) d.className="wide";
+  d.innerHTML=`<form class="dlg" novalidate><header><h3>${App.U.esc(title)}</h3><button class="btn sm" type="button" data-x>Cerrar</button></header><div class="bd">${bodyHTML}<div class="ferr"></div></div><footer><button class="btn" type="button" data-x>${App.U.esc(cancel)}</button><button class="btn pri" type="submit">${App.U.esc(ok)}</button></footer></form>`;
+  document.body.appendChild(d);
+  const fm=d.querySelector("form");
+  let enviado=false; const close=()=>{ if(!enviado&&onClose) try{ onClose(fm); }catch(e){} d.close(); d.remove(); };
+  d.addEventListener("cancel",e=>{ e.preventDefault(); close(); });
+  d.querySelectorAll("[data-x]").forEach(b=>b.onclick=close);
+  const showErr=m=>{ d.querySelector(".ferr").innerHTML=m?`<div class="errbox">${App.U.esc(m)}</div>`:""; };
+  fm.addEventListener("submit",async e=>{ e.preventDefault(); showErr(""); const btn=fm.querySelector("button[type=submit]"); btn.disabled=true;
+    try{ const res=await onSubmit(fm,showErr); if(res!==false){ enviado=true; close(); } } finally { btn.disabled=false; } });
+  d.showModal(); if(onOpen) onOpen(fm,d); return d;
+};
+App.UI.val = (fm,name,type) => { const el=fm.elements[name]; if(!el) return null; const v=el.value; if(type==="n") return App.U.num(v); if(type==="pct"){ const x=App.U.num(v); return x==null?null:(x>1?x/100:x); } return v===""?null:v.trim(); };
+
+</script>

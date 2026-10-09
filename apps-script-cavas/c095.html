@@ -1,0 +1,28 @@
+<style>
+
+.home-v2 .collector-grid .cmini{
+  min-height:132px;
+  padding:14px 16px;
+  grid-template-columns:74px 1fr auto;
+  gap:14px;
+  text-align:left;
+  align-items:center;
+  overflow:hidden;
+}
+.home-v2 .collector-visual{
+  width:68px;height:92px;display:grid;place-items:center;
+  color:var(--c);
+  filter:drop-shadow(0 8px 16px color-mix(in srgb,var(--c) 16%,transparent));
+}
+.home-v2 .collector-visual svg{width:68px;height:92px;display:block}
+.home-v2 .collector-meta{display:flex;flex-direction:column;gap:5px;min-width:0}
+.home-v2 .collector-meta b{font-size:1.12rem;letter-spacing:-.02em}
+.home-v2 .collector-meta small{font-size:.82rem;color:var(--muted)}
+.home-v2 .collector-state{font-size:.9rem;font-weight:700;align-self:flex-start;margin-top:4px}
+.home-v2 .collector-grid .cmini:hover .collector-visual{transform:translateY(-2px);transition:transform .2s ease}
+@media(max-width:700px){
+  .home-v2 .collector-grid .cmini{grid-template-columns:60px 1fr auto;min-height:112px}
+  .home-v2 .collector-visual{width:54px;height:74px}.home-v2 .collector-visual svg{width:54px;height:74px}
+}
+
+</style>

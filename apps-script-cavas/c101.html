@@ -1,0 +1,95 @@
+<style>
+
+/* ============================================================
+   FV / TANQUE — VISTA OPERATIVA COMPACTA
+   ============================================================ */
+.fv-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1.45fr) minmax(280px,.72fr);
+  gap:14px;
+  align-items:start;
+  margin-bottom:14px;
+}
+.fv-hero{
+  padding:18px 22px;
+  gap:16px;
+  margin-bottom:12px;
+  min-height:0;
+}
+.fv-hero-tag{font-size:.68rem}
+.fv-hero-t{font-size:2rem;margin:5px 0 6px}
+.fv-hero-lote{font-size:1.05rem}
+.fv-hero-sub{font-size:.86rem;margin-bottom:8px;line-height:1.35}
+.fv-hero-status{margin-top:4px}
+.fv-hero-r{gap:8px}
+.fv-hero-r .btn.lg{min-height:42px;padding:9px 14px;font-size:.86rem}
+.fv-t0{
+  padding:18px 20px;
+  border-radius:16px;
+}
+.fv-t0-h{margin-bottom:5px}
+.fv-t0-h .lbl{font-size:.68rem}
+.fv-t0-cd{font-size:.78rem}
+.fv-clock{
+  font-size:2.85rem;
+  margin:2px 0 1px;
+  letter-spacing:-.05em;
+}
+.fv-date{font-size:.82rem;margin-bottom:11px}
+.fv-att{margin:10px 0 0}
+.fv-att-top{font-size:.78rem;margin-bottom:6px}
+.fv-att-top b{font-size:.94rem}
+.fv-att-bar{height:8px}
+.fv-att-sub{font-size:.76rem;margin-top:7px;line-height:1.35}
+.wsteps{
+  margin-top:12px;
+  border-radius:11px;
+}
+.wsteps>div{padding:9px 11px}
+.wsteps .k{font-size:.64rem}
+.wsteps .v{font-size:.88rem;margin-top:3px}
+.wsteps .r{font-size:.69rem}
+.fv-side{
+  padding:17px 18px;
+  border-radius:16px;
+}
+.fv-side-h{font-size:.68rem;margin-bottom:10px}
+.fv-facts{grid-template-columns:1fr 1fr;gap:0 16px}
+.fv-facts>div{padding:8px 0;font-size:.78rem}
+.fv-facts>div:nth-last-child(-n+2){border-bottom:0}
+.fv-facts dd{font-size:.78rem}
+.fv-side-miss{margin-top:10px;padding:9px 10px;font-size:.74rem}
+.fv-side-acts{margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.fv-side-acts .btn{justify-content:center;min-height:34px;padding:6px 8px;font-size:.73rem}
+/* Compact section rhythm inside tank */
+.fv-grid + .card.sec{margin-top:10px}
+.fv-grid ~ .sec{margin-bottom:12px}
+.fv-grid ~ .sec .sec-h{min-height:42px}
+.fv-grid ~ .sec h2{font-size:.98rem}
+/* Make sample table denser */
+.fv-grid ~ section[aria-label="Muestras de extracto"] th,
+.fv-grid ~ section[aria-label="Muestras de extracto"] td{padding:8px 10px}
+.fv-grid ~ section[aria-label="Muestras de extracto"] table{font-size:.78rem}
+@media(max-width:1080px){
+  .fv-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  .fv-hero{padding:16px}
+  .fv-hero-t{font-size:1.72rem}
+  .fv-clock{font-size:2.65rem}
+  .fv-facts{grid-template-columns:1fr}
+  .fv-facts>div{border-bottom:1px solid var(--line-2)!important}
+  .fv-side-acts{grid-template-columns:1fr 1fr}
+}
+
+/* Prioridad de levaduras respecto a T0 */
+.lev-priority-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0 14px}
+.lev-priority-card{display:block;padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:var(--card);text-decoration:none;color:inherit;transition:.18s ease}
+.lev-priority-card:hover{transform:translateY(-1px);border-color:var(--blue)}
+.lev-priority-card.rojo{border-color:rgba(255,69,58,.42)}.lev-priority-card.naranja{border-color:rgba(255,159,10,.35)}.lev-priority-card.verde{border-color:rgba(48,209,88,.3)}
+.lp-top{display:flex;align-items:center;gap:8px}.lp-top b{font-size:15px}.lp-rank{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#303033;font-weight:700;font-size:12px}.rojo .lp-rank{background:rgba(255,69,58,.18);color:#ff453a}.naranja .lp-rank{background:rgba(255,159,10,.16);color:#ff9f0a}.verde .lp-rank{background:rgba(48,209,88,.14);color:#30d158}.lp-status{margin-left:auto;font-size:9px;font-weight:700;letter-spacing:.07em;opacity:.9}.rojo .lp-status{color:#ff453a}.naranja .lp-status{color:#ff9f0a}.verde .lp-status{color:#30d158}.lp-time{font-size:13px;font-weight:600;margin:10px 0 7px}.lp-bar{height:5px;background:#343438;border-radius:99px;overflow:hidden}.lp-bar i{display:block;height:100%;border-radius:99px;background:currentColor}.rojo .lp-bar i{color:#ff453a}.naranja .lp-bar i{color:#ff9f0a}.verde .lp-bar i{color:#30d158}.lp-foot{display:flex;justify-content:space-between;gap:8px;margin-top:7px;font-size:10px;color:var(--muted)}
+.lev-rank-cell{display:flex;flex-direction:column;gap:3px;min-width:74px}.lev-rank-cell small{font-size:9px;color:var(--muted);white-space:nowrap}.lev-rank-badge{display:inline-flex;width:max-content;padding:4px 7px;border-radius:8px;background:#303033;font-size:11px}.lev-rank-badge.rojo{color:#ff453a;background:rgba(255,69,58,.13)}.lev-rank-badge.naranja{color:#ff9f0a;background:rgba(255,159,10,.12)}.lev-rank-badge.verde{color:#30d158;background:rgba(48,209,88,.1)}
+@media(max-width:1200px){.lev-priority-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.lev-priority-strip{grid-template-columns:1fr}.lev-priority-card{padding:12px}}
+
+</style>

@@ -1,0 +1,189 @@
+<script>
+
+(function(){
+  const {esc,clone,parseDT,toast}=App.U;
+  const cols=[['coc','COC #'],['temperature','Temp. cocimiento (°C)'],['volume','Volumen (Hl)'],['oxygen','Oxígeno (ppm)'],['yeast','Levadura (MMCel)'],['extract','Extracto mosto frío (°P)'],['oxygenRate','Oxígeno (kg/h)'],['air1','Medidor aire 1 (kg/Hl)'],['air2','Medidor aire 2 (kg/Hl)']];
+  const inputs=[['tq','Tanque / FV','number'],['consecutive','Consecutivo F','text'],['brand','Marca','brand'],['collector','Colector','number'],['sowingVolume','Volumen utilizado del colector (Hl)','number'],['generation','Generación de la levadura sembrada','number'],['yeastName','Nombre de levadura','text'],['propagatedYeast','Levadura de propagación','text'],['yeastTemperature','Temperatura levadura (°C)','number'],['initialPressure','Presión inicio FV (PSI)','number'],['pnc','PNC','text'],['fillStart','Inicio llenado','datetime-local'],['fillEnd','Fin llenado','datetime-local'],['aerationStart','Inicio aireación','datetime-local'],['aerationEnd','Fin aireación','datetime-local']];
+  let draft=null,editTq=null,draftKey=null,draftRouteKey=null;
+  const num=v=>{
+    if(v==null||String(v).trim()==='')return null;
+    let text=String(v).trim().replace(/\s/g,'');
+    if(text.includes(','))text=text.replace(/\./g,'').replace(',','.');
+    const n=Number(text);return Number.isFinite(n)?n:null;
+  };
+  const draftStorage=()=>`cavas:fv:draft:${draftKey}`;
+  let saveTimer,draftWrite=Promise.resolve();
+  function draftList(){
+    const map={};Object.entries(App.S.config||{}).filter(([k])=>k.startsWith('fvDraft_')).forEach(([k,v])=>map[k.slice(8)]=v);
+    try{for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key.startsWith('cavas:fv:draft:')){const d=JSON.parse(localStorage.getItem(key));if(d&&Array.isArray(d.brews)){const id=key.split(':').pop();if(!map[id]||String(d.draftUpdatedAt||'')>String(map[id].draftUpdatedAt||''))map[id]=d;}}}}catch(e){}
+    return Object.entries(map).filter(([,d])=>d&&Array.isArray(d.brews)).map(([id,data])=>({id,data}));
+  }
+  const storeDraft=()=>{
+    if(!draft||!App.Store.canWrite)return;
+    if(num(draft.tq)){draftKey=String(num(draft.tq));try{localStorage.removeItem('cavas:fv:draft:new');sessionStorage.removeItem('cavas:fv:draft:new');}catch(e){}}
+    draft.draftUpdatedAt=new Date().toISOString();const snapshot=clone(draft),key=draftStorage(),id=draftKey;
+    const status=msg=>{const el=document.getElementById('fvDraftStatus');if(el)el.textContent=msg;};
+    try{localStorage.setItem(key,JSON.stringify(snapshot));status('Registro en curso guardado en este navegador');}catch(e){status('No se pudo guardar el borrador. Usa Guardar FV antes de salir.');}
+    clearTimeout(saveTimer);saveTimer=setTimeout(()=>{draftWrite=draftWrite.then(async()=>{
+      if(await App.Store.set('config','fvDraft_'+id,snapshot)){
+        if(id!=='new'&&App.S.config.fvDraft_new?.consecutive===snapshot.consecutive)await App.Store.del('config','fvDraft_new');
+        status(App.Store.mode==='db'?'Registro en curso guardado en la base compartida':'Registro en curso guardado');
+      }
+    });},400);
+  };
+  const localNow=()=>{const d=new Date(),p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;};
+  const nextConsecutive=()=>`F${Math.max(0,...App.Cavas.records().map(r=>/^F\d+$/.test(r.consecutive||'')?Number(r.consecutive.slice(1)):0),...Object.values(App.ExcelCavas?.inventory()?.fermentationArchives||{}).map(r=>/^F\d+$/.test(r.consecutive||'')?Number(r.consecutive.slice(1)):0),...Object.keys(App.S.tanques||{}).map(k=>/^F\d+$/.test(k)?Number(k.slice(1)):0))+1}`;
+  const format=n=>n==null||!Number.isFinite(n)?'—':new Intl.NumberFormat('es-CO',{maximumFractionDigits:2}).format(n);
+  const hours=(a,b)=>a&&b?(+parseDT(b)-+parseDT(a))/3600000:null;
+  function totals(d){
+    const rows=d.brews||[],volumes=rows.map(r=>num(r.volume)),total=volumes.reduce((s,v)=>s+(v||0),0);
+    const weighted=k=>total>0&&rows.filter((r,i)=>volumes[i]>0).every(r=>num(r[k])!=null)?rows.reduce((s,r,i)=>s+(num(r[k])||0)*(volumes[i]||0),0)/total:null;
+    const yeastValues=rows.map(r=>num(r.yeast)).filter(v=>v!=null);
+    const air1=weighted('air1'),air2=weighted('air2');
+    return {count:rows.filter(r=>num(r.coc)!=null).length,volume:volumes.some(v=>v!=null)?total:null,temperature:weighted('temperature'),oxygen:weighted('oxygen'),extract:weighted('extract'),oxygenRate:weighted('oxygenRate'),air1,air2,yeast:yeastValues.length?yeastValues.reduce((a,b)=>a+b,0):null,dispersion:air1!=null&&air2!=null&&air1!==0?Math.abs(air1-air2)/air1*100:null};
+  }
+  function input(k,label,type,value){
+    const fieldId='fv-'+k;
+    let control;
+    if(k==='tq')control=`<select id="${fieldId}" name="tq" required ${editTq?'disabled':''}><option value="">Seleccionar tanque</option>${App.Cavas.records().map(r=>`<option value="${r.tq}" ${+value===r.tq?'selected':''} ${!editTq&&r.operation?'disabled':''}>FV ${r.tq}${r.operation?' · '+(r.consecutive||r.operation):' · Sin operación'}</option>`).join('')}</select>`;
+    else if(k==='collector')control=`<select id="${fieldId}" name="collector"><option value="">Seleccionar colector</option>${Array.from({length:6},(_,i)=>i+1).map(n=>`<option value="${n}" ${+value===n?'selected':''}>C${n}</option>`).join('')}</select>`;
+    else if(type==='brand')control=`<select id="${fieldId}" name="${k}" required><option value="">Seleccionar marca</option>${App.MARCAS.map(m=>`<option ${value===m?'selected':''}>${esc(m)}</option>`).join('')}</select>`;
+    else control=`<input id="${fieldId}" name="${k}" type="${type==='number'?'text':type}" ${type==='number'?'inputmode="decimal" data-number="true"':''} ${k==='consecutive'?'required placeholder="F345" autocomplete="off"':''} value="${esc(value??'')}">`;
+    return `<div class="f fv-field"><label for="${fieldId}">${label}</label>${control}${type==='datetime-local'&&k!=='reseedingDate'?`<button class="fv-date-now" type="button" data-now="${k}">Ahora</button>`:''}</div>`;
+  }
+  function table(){return `<div class="fv-table-scroll" tabindex="0" aria-label="Tabla editable de cocimientos"><table class="fv-brews"><thead><tr><th>#</th>${cols.map(([,label])=>`<th>${label}</th>`).join('')}<th>Dispersión (%)</th><th>Fila</th></tr></thead><tbody>${draft.brews.map((r,i)=>`<tr><th>${i+1}</th>${cols.map(([k,label])=>`<td><input type="text" inputmode="decimal" data-row="${i}" data-col="${k}" aria-label="${label}, cocimiento ${i+1}" value="${esc(r[k]??'')}"></td>`).join('')}<td data-disp="${i}">—</td><td><button type="button" class="fv-remove" data-remove="${i}" aria-label="Eliminar cocimiento ${i+1}" ${draft.brews.length===1?'disabled':''}>×</button></td></tr>`).join('')}</tbody><tfoot><tr><th>Total / ponderado</th>${cols.map(([k])=>`<td data-total="${k}">—</td>`).join('')}<td data-total="dispersion">—</td><td></td></tr></tfoot></table></div>`;}
+  const field=k=>{const f=inputs.find(x=>x[0]===k);return input(f[0],k==='reseedingDate'?'Fecha y hora en que terminó la cosecha':f[1],f[2],draft[k]);};
+  function positions(){return Object.entries(App.S.colectores||{}).map(([id,c])=>[id,App.CollectorFlow?.current(id)||c]).filter(([,c])=>c.vol!==0).filter(([id])=>Number(id.match(/^c(\d+)/)?.[1])===num(draft.collector));}
+  function positionMarkup(){const choices=positions();return `<div class="f fv-field"><label for="fvPosition">Levadura en el colector</label><select id="fvPosition" name="collectorPosition"><option value="">Ingreso manual</option>${choices.map(([id,c])=>`<option value="${esc(id)}" ${draft.collectorPosition===id?'selected':''}>${esc(id.toUpperCase().replace('-',' · P'))} · ${esc(c.nombre||'Sin nombre')}</option>`).join('')}</select><small>${choices.length?'Elige la posición para cargar sus datos.':'Puedes ingresar los datos de levadura directamente.'}</small></div>`;}
+  function timing(title,a,b,id,label,extra=''){return `<section class="fv-time-group"><h3>${title}</h3><div class="fv-pair">${field(a)}${b?field(b):''}</div>${extra}<div class="fv-calculated"><span>${label}</span><b id="${id}">—</b></div></section>`;}
+  function layout(){return `<fieldset class="fv-main-fields"><legend>Datos del fermentador</legend><div class="fv-identity">${field('tq')}${field('consecutive')}${field('brand')}${field('pnc')}</div><div class="fv-yeast-block"><h3>Levadura y condiciones iniciales</h3><div class="fv-yeast-grid">${field('collector')}<div id="fvPositionWrap">${positionMarkup()}</div>${field('yeastName')}${field('generation')}${field('sowingVolume')}${field('propagatedYeast')}${field('yeastTemperature')}${field('initialPressure')}</div><p id="fvLevaInfo" class="fv-helper">Los datos que no estén disponibles se pueden completar a mano.</p></div><div class="fv-time-grid">${timing('Llenado','fillStart','fillEnd','fvFillHours','Tiempo llenado (h)')}${timing('Aireación','aerationStart','aerationEnd','fvDya','DYA (min)','<button type="button" class="fv-link" id="fvCopyStart">Usar inicio de llenado</button>')}</div></fieldset>`;}
+  function pasteMatrix(text){
+    const rows=text.replace(/\r/g,'').replace(/\n+$/,'').split('\n').map(r=>r.split('\t'));
+    if(rows.length>200)throw new Error('Puedes pegar hasta 200 filas a la vez.');
+    if(rows.some(r=>r.some(v=>v.trim()!==''&&num(v)==null)))throw new Error('Pega solo valores numéricos, sin encabezados. Se admite la coma decimal.');
+    return rows.map(r=>r.map(v=>num(v)));
+  }
+  function update(){
+    const t=totals(draft),root=document.getElementById('view');
+    root.querySelectorAll('[data-total]').forEach(e=>e.textContent=format(e.dataset.total==='coc'?t.count:t[e.dataset.total]));
+    root.querySelectorAll('[data-disp]').forEach(e=>{const r=draft.brews[+e.dataset.disp],a=num(r.air1),b=num(r.air2);e.textContent=format(a!=null&&b!=null&&a!==0?Math.abs(a-b)/a*100:null);});
+    const h=hours(draft.fillStart,draft.fillEnd),re=hours(draft.reseedingDate,draft.fillStart),air=hours(draft.aerationStart,draft.aerationEnd);
+    root.querySelector('#fvFillHours').textContent=format(h);root.querySelector('#fvDya').textContent=format(air==null?null:air*60);
+  }
+  function init(tq){
+    const key=tq?String(tq):'new';
+    if(draft&&draftRouteKey===key)return;
+    draftKey=key;draftRouteKey=key;
+    editTq=tq?+tq:null;
+    const r=App.Cavas.records().find(r=>r.tq===editTq),t=r&&Object.values(App.S.tanques||{}).find(t=>t.lote===r.consecutive);
+    draft=r&&r.fvRegistration?clone(r.fvRegistration):{tq:editTq,consecutive:r&&r.operation==='F'?r.consecutive:nextConsecutive(),brand:r?({S:'ESTANDAR',L:'LIGHT',Z:'AZTECA',CC:'CLUB COLOMBIA',PS:'PILSEN',A:'AGUILA'}[r.brand]||r.brand):'',yeastName:r?.yeast||'',collector:t?.levadura?.colector||null,fillEnd:r?.operation==='F'?r.fill:null,brews:Array.from({length:5},()=>({}))};
+    let restored=draftList().find(x=>x.id===key)?.data;
+    try{if(!restored)restored=JSON.parse(sessionStorage.getItem(draftStorage()));}catch(e){}
+    if(restored&&Array.isArray(restored.brews)){
+      draft=clone(restored);if(num(draft.tq))draftKey=String(num(draft.tq));
+      try{localStorage.setItem(draftStorage(),JSON.stringify(draft));}catch(e){}
+    }
+    if(!draft.consecutive)draft.consecutive=nextConsecutive();if(draft.generation==null&&r?.fermentation?.levadura?.generacion!=null)draft.generation=r.fermentation.levadura.generacion;
+    if(!draft.brews?.length)draft.brews=Array.from({length:5},()=>({}));
+  }
+  App.V.fv={render(action='registro',tq){
+    init(tq);
+    return `<div class="fv-registration"><a class="back" href="#/tanques/fermentadores">← Fermentadores</a><div class="page-h"><div><h1>${editTq?'Editar FV '+editTq:'Registrar FV'}</h1><p>Recibo de mosto · Llenado y aireación</p></div></div><form id="fvForm" novalidate>${layout()}<fieldset class="fv-brew-section"><legend>Cocimientos en FV</legend><p class="fv-helper">Tab: siguiente celda · Enter: siguiente fila · Puedes pegar varias celdas desde Excel. Se acepta 2,7 o 2.7.</p><div id="fvTable">${table()}</div><div class="fv-table-actions"><button class="btn sm" type="button" id="fvAdd">+ Agregar cocimiento</button><small>Los ponderados usan el volumen; la levadura se suma. La dispersión compara ambos medidores respecto al medidor 1.</small></div></fieldset><div id="fvError" class="ferr" role="alert"></div><div class="fv-savebar"><span id="fvDraftStatus" role="status">${App.Store.canWrite?'Guardado automático del registro en curso':'Solo lectura'}</span><div class="acts"><a class="btn" href="#/tanques/fermentadores">Volver</a>${App.Store.canWrite?'<button class="btn pri" type="submit">Guardar FV</button>':''}</div></div></form></div>`;
+  },mount(){
+    const fm=document.getElementById('fvForm');
+    const rerenderTable=()=>{document.getElementById('fvTable').innerHTML=table();update();storeDraft();};
+    const reflect=(key,value)=>{draft[key]=value;const el=fm.elements[key];if(el)el.value=value??'';};
+    const fillCollector=id=>{
+      const c=App.CollectorFlow?.current(id)||App.S.colectores?.[id];if(!c)return;
+      draft.collectorPosition=id;reflect('sowingVolume',c.vol);reflect('generation',c.generacion);reflect('yeastName',c.nombre||'');
+      if(c.temp!=null)reflect('yeastTemperature',c.temp);
+      if(c.finRemocion)reflect('reseedingDate',c.finRemocion.slice(0,16));
+      document.getElementById('fvLevaInfo').textContent=`Datos cargados de ${id.toUpperCase()}: ${c.nombre||'levadura sin nombre'}. Puedes ajustarlos antes de guardar.`;
+    };
+    fm.oninput=e=>{
+      const el=e.target;if(el.dataset.col)draft.brews[+el.dataset.row][el.dataset.col]=el.value;else if(el.name)draft[el.name]=el.value;
+      if(el.name==='consecutive'){draft.consecutive=el.value.toUpperCase();el.value=draft.consecutive;}
+      if(el.name==='collector'){
+        draft.collectorPosition='';reflect('sowingVolume','');reflect('yeastName','');reflect('reseedingDate','');reflect('yeastTemperature','');
+        const options=positions();if(options.length===1)fillCollector(options[0][0]);
+        document.getElementById('fvPositionWrap').innerHTML=positionMarkup();
+      }
+      if(el.name==='collectorPosition')fillCollector(el.value);
+      update();storeDraft();
+    };
+    fm.onclick=e=>{
+      const b=e.target.closest('button');if(!b||!App.Store.canWrite)return;
+      if(b.dataset.now){reflect(b.dataset.now,localNow());update();storeDraft();}
+      if(b.id==='fvCopyStart'){
+        if(!draft.fillStart){document.getElementById('fvError').innerHTML='<div class="errbox">Indica primero el inicio de llenado.</div>';fm.elements.fillStart.focus();return;}
+        reflect('aerationStart',draft.fillStart);update();storeDraft();
+      }
+      if(b.dataset.remove!=null){draft.brews.splice(+b.dataset.remove,1);rerenderTable();}
+    };
+    fm.onkeydown=e=>{
+      const el=e.target;if(!el.dataset.col)return;
+      const row=+el.dataset.row,col=cols.findIndex(([k])=>k===el.dataset.col);let r=row,c=col;
+      if(e.key==='Enter'||e.key==='ArrowDown')r+=e.shiftKey?-1:1;
+      else if(e.key==='ArrowUp')r--;
+      else if(e.key==='ArrowLeft'&&el.selectionStart===0)c--;
+      else if(e.key==='ArrowRight'&&el.selectionEnd===el.value.length)c++;
+      else return;
+      e.preventDefault();if(r<0||c<0||c>=cols.length)return;
+      if(r>=draft.brews.length){if(!App.Store.canWrite)return;draft.brews.push({});rerenderTable();}
+      const next=fm.querySelector(`[data-row="${r}"][data-col="${cols[c][0]}"]`);if(next){next.focus();next.select();}
+    };
+    fm.onpaste=e=>{
+      const el=e.target;if(!el.dataset.col||!App.Store.canWrite)return;
+      const text=e.clipboardData.getData('text');if(!/[\t\n]/.test(text))return;
+      e.preventDefault();try{
+        const values=pasteMatrix(text),ri=+el.dataset.row,ci=cols.findIndex(([k])=>k===el.dataset.col);
+        if(values.some(r=>r.length+ci>cols.length))throw new Error('La selección excede las columnas editables. Pega desde la columna correspondiente.');
+        while(draft.brews.length<ri+values.length)draft.brews.push({});
+        values.forEach((r,i)=>r.forEach((v,j)=>draft.brews[ri+i][cols[ci+j][0]]=v));rerenderTable();
+        document.getElementById('fvError').textContent='';fm.querySelector(`[data-row="${ri}"][data-col="${cols[ci][0]}"]`)?.focus();
+      }catch(error){document.getElementById('fvError').innerHTML=`<div class="errbox">${esc(error.message)}</div>`;}
+    };
+    document.getElementById('fvAdd').onclick=()=>{draft.brews.push({});rerenderTable();fm.querySelector(`[data-row="${draft.brews.length-1}"][data-col="coc"]`)?.focus();};
+    fm.onsubmit=async e=>{
+      e.preventDefault();const fail=msg=>{document.getElementById('fvError').innerHTML=`<div class="errbox">${esc(msg)}</div>`;};
+      if(!App.Store.canWrite)return fail('Modo de solo lectura.');
+      const tq=num(draft.tq),cons=String(draft.consecutive||'').trim().toUpperCase();
+      if(!Number.isInteger(tq)||tq<1||tq>32)return fail('El tanque debe ser un número entre 1 y 32.');
+      if(!/^F\d+$/.test(cons))return fail('Indica el consecutivo F, por ejemplo F345.');
+      if(!draft.brand)return fail('Selecciona la marca.');
+      for(const [k,label,type] of inputs)if(type==='number'&&draft[k]!=null&&String(draft[k]).trim()!==''&&num(draft[k])==null){fm.elements[k]?.focus();return fail(label+': escribe un número válido.');}
+      if(editTq&&tq!==editTq)return fail('El número de tanque del registro existente no se puede cambiar.');
+      const all=App.Cavas.records(),r=all.find(r=>r.tq===tq);
+      if(r?.operation==='M')return fail('Este tanque está en maduración. Finaliza su filtración antes de usarlo como FV.');
+      if(!editTq&&r?.operation)return fail('Este tanque ya tiene una operación. Abre su registro para editarlo.');
+      if(all.some(r=>r.tq!==tq&&r.consecutive===cons))return fail('Este consecutivo ya está registrado en otro tanque.');
+      if(draft.collector!=null&&(!Number.isInteger(+draft.collector)||draft.collector<1||draft.collector>6))return fail('El colector debe ser un número entre 1 y 6.');
+      for(const [a,b,label] of [['fillStart','fillEnd','llenado'],['aerationStart','aerationEnd','aireación']])if(hours(draft[a],draft[b])<0)return fail('Revisa las fechas de '+label+': el inicio debe ser anterior al fin.');
+      if(draft.brews.some(r=>cols.some(([k])=>k!=='temperature'&&num(r[k])!=null&&num(r[k])<0)))return fail('Los datos de cocimientos deben ser mayores o iguales a cero.');
+      if(num(draft.generation)!=null&&(!Number.isInteger(num(draft.generation))||num(draft.generation)<0||num(draft.generation)>10))return fail('La generación debe ser un entero entre 0 y 10. Recomendado: hasta generación 7.');
+      if(num(draft.initialPressure)!=null&&num(draft.initialPressure)<0)return fail('La presión debe ser mayor o igual a cero.');
+      for(let i=0;i<draft.brews.length;i++)for(const [k,label] of cols)if(draft.brews[i][k]!=null&&String(draft.brews[i][k]).trim()!==''&&num(draft.brews[i][k])==null)return fail(`Cocimiento ${i+1}, ${label}: escribe un número válido.`);
+      if(draft.brews.some(r=>num(r.coc)!=null&&(!Number.isInteger(num(r.coc))||num(r.coc)<1)))return fail('El COC # debe ser un entero positivo.');
+      inputs.filter(([, ,type])=>type==='number').forEach(([k])=>draft[k]=num(draft[k]));draft.brews=draft.brews.map(r=>Object.fromEntries(cols.map(([k])=>[k,num(r[k])])));
+      draft.consecutive=cons;const sowError=App.CollectorFlow?.validateSow(draft);if(sowError)return fail(sowError);
+      const snapshot=clone(App.ExcelCavas?.inventory()||App.S.config.inventarioCavas||App.CAVAS_SEED),now=new Date().toISOString(),t=totals(draft);
+      const saved=Object.assign({},r,{tq,operation:'F',consecutive:cons,brand:draft.brand,fill:draft.fillEnd||draft.fillStart||null,yeast:draft.yeastName||null,volume:t.volume??r?.volume??null,temperature:r?.temperature??null,manualUpdatedAt:now,fvRegistration:clone(Object.assign({},draft,{consecutive:cons}))});
+      if(r?.operation==='F'&&(r.consecutive!==cons||r.fill!==saved.fill))App.TankProcess?.archiveInto(snapshot,r);
+      if(r?.consecutive!==cons)saved.fermentation={eo:t.extract,eLim:null,muestras:[]};
+      if(draft.generation!=null)saved.fermentation=Object.assign({},saved.fermentation,{levadura:Object.assign({},saved.fermentation?.levadura,{nombre:draft.yeastName,generacion:num(draft.generation)})});
+      App.CollectorFlow?.debit(snapshot,draft);
+      snapshot.records=snapshot.records.map(r=>r.tq===tq?saved:r);
+      const button=fm.querySelector('[type=submit]');button.disabled=true;
+      clearTimeout(saveTimer);
+      await draftWrite;
+      if(await App.Store.set('config','inventarioCavas',snapshot)){try{sessionStorage.removeItem(draftStorage());sessionStorage.removeItem('cavas:fv:draft:new');localStorage.removeItem(draftStorage());}catch(e){}await App.Store.del('config','fvDraft_'+draftKey);if(App.S.config.fvDraft_new?.consecutive===cons)await App.Store.del('config','fvDraft_new');toast('FV guardado');draft=null;draftKey=null;draftRouteKey=null;App.go('tanques/fermentadores');}else{button.disabled=false;fail('No se pudo guardar el FV.');}
+    };
+    if(!App.Store.canWrite)fm.querySelectorAll('input,select,button').forEach(el=>el.disabled=true);
+    update();
+  }};
+  App.FVRegistration={totals,pasteMatrix,num,listDrafts:draftList};
+  window.addEventListener('hashchange',()=>{if(!location.hash.startsWith('#/fv/')){draft=null;draftKey=null;draftRouteKey=null;}});
+})();
+
+
+</script>

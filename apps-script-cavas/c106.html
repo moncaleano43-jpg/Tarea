@@ -1,0 +1,136 @@
+<style>
+
+/*
+ Apple Design adaptation — based on emilkowalski/skills/apple-design.
+ Applied to the existing vanilla HTML app: spatial consistency, restrained motion,
+ interruptible-feeling feedback, translucent navigation chrome, optical typography,
+ reduced-motion support and depth without heavy borders.
+*/
+:root{
+  --apple-dur-fast:120ms;
+  --apple-dur:200ms;
+  --apple-dur-slow:320ms;
+  --apple-ease:cubic-bezier(.22,.61,.36,1);
+  --apple-ease-out:cubic-bezier(.16,1,.3,1);
+  --apple-shadow-1:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(0,0,0,.045);
+  --apple-shadow-2:0 1px 2px rgba(0,0,0,.07),0 12px 32px rgba(0,0,0,.08),0 28px 70px rgba(0,0,0,.06);
+  --apple-glass-light:rgba(255,255,255,.70);
+  --apple-glass-dark:rgba(28,28,30,.68);
+  --apple-hairline-light:rgba(0,0,0,.08);
+  --apple-hairline-dark:rgba(255,255,255,.10);
+}
+
+html{font-optical-sizing:auto;scroll-behavior:auto}
+body{text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{ text-wrap:balance; }
+
+/* Apple-like spatial consistency: navigation chrome is glass; content stays readable. */
+.side,.topbar{
+  border:0 !important;
+  box-shadow:var(--apple-shadow-1) !important;
+  background:color-mix(in srgb,var(--bg) 72%,transparent) !important;
+  backdrop-filter:blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter:blur(24px) saturate(180%) !important;
+  isolation:isolate;
+}
+.side{background:color-mix(in srgb,var(--side) 84%,transparent) !important}
+.topbar{background:color-mix(in srgb,var(--bg) 74%,transparent) !important}
+
+/* Content surfaces: no hard grey outlines. Depth comes from layered shadows. */
+.card,.home-panel,.attention-card,.collector-panel,.kpi,.qa,.tcard,.ccard,
+.lev-card,.lev-priority-card,.lev-priority-item,.history-card,.ycard,.cpanel,
+.collector-detail,.collector-time-hero,.posx{
+  border-color:transparent !important;
+  box-shadow:var(--apple-shadow-1) !important;
+}
+
+/* Nested surfaces use alpha instead of a second visible border. */
+.card,.home-panel,.attention-card,.collector-panel,.kpi,.qa,.tcard,.ccard,
+.lev-card,.lev-priority-card,.lev-priority-item,.history-card,.ycard,.cpanel,
+.collector-detail,.collector-time-hero,.posx{
+  outline:1px solid color-mix(in srgb,var(--ink) 5%,transparent);
+  outline-offset:-1px;
+}
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] .home-panel,
+:root[data-theme="dark"] .attention-card,
+:root[data-theme="dark"] .collector-panel,
+:root[data-theme="dark"] .kpi,
+:root[data-theme="dark"] .qa,
+:root[data-theme="dark"] .tcard,
+:root[data-theme="dark"] .ccard,
+:root[data-theme="dark"] .lev-card,
+:root[data-theme="dark"] .lev-priority-card,
+:root[data-theme="dark"] .lev-priority-item,
+:root[data-theme="dark"] .history-card,
+:root[data-theme="dark"] .ycard,
+:root[data-theme="dark"] .cpanel,
+:root[data-theme="dark"] .collector-detail,
+:root[data-theme="dark"] .collector-time-hero,
+:root[data-theme="dark"] .posx{
+  outline-color:rgba(255,255,255,.055);
+}
+
+/* Floating controls: translucent, but never glass-on-glass in the content layer. */
+.btn,.theme-btn,.gsearch .box,.side-theme-control{
+  transition:transform var(--apple-dur-fast) var(--apple-ease),
+              background-color var(--apple-dur) var(--apple-ease),
+              box-shadow var(--apple-dur) var(--apple-ease),
+              opacity var(--apple-dur-fast) linear;
+}
+.btn:active,.theme-btn:active{transform:scale(.97)}
+.btn.is-pressed,.theme-btn.is-pressed{transform:scale(.97)}
+
+/* Pointer-down feedback is continuous and immediate, not only on click. */
+[data-go],button,a{touch-action:manipulation}
+
+/* Avoid generic grey input borders; focus gets the semantic accent ring. */
+input,select,textarea{border-color:transparent !important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 6%,transparent) !important}
+input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent),inset 0 0 0 1px var(--accent) !important}
+
+/* Glass search/result surfaces are navigation-adjacent chrome. */
+.gsearch .box,.gres,.theme-btn{
+  background:color-mix(in srgb,var(--surface) 70%,transparent) !important;
+  border-color:transparent !important;
+  box-shadow:var(--apple-shadow-1) !important;
+  backdrop-filter:blur(20px) saturate(180%);
+  -webkit-backdrop-filter:blur(20px) saturate(180%);
+}
+.gres{outline:1px solid color-mix(in srgb,var(--ink) 7%,transparent)}
+
+/* Navigation selection is a material shift, not a boxed outline. */
+.nav a{transition:background-color var(--apple-dur) var(--apple-ease),transform var(--apple-dur-fast) var(--apple-ease),color var(--apple-dur-fast) linear}
+.nav a:active{transform:scale(.985)}
+.nav a[aria-current="page"]{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 4%,transparent)}
+
+/* View transitions: short, restrained and reversible-looking. */
+::view-transition-old(root),::view-transition-new(root){animation-duration:180ms;animation-timing-function:var(--apple-ease-out)}
+::view-transition-old(root){animation-name:apple-vt-out}
+::view-transition-new(root){animation-name:apple-vt-in}
+@keyframes apple-vt-out{to{opacity:.88;filter:blur(2px)}}
+@keyframes apple-vt-in{from{opacity:.72;filter:blur(2px);transform:translateY(4px)}}
+
+/* Micro motion: no perpetual bounce; only subtle settle on newly rendered views. */
+.fade-in{animation:apple-fade-in 220ms var(--apple-ease-out) both}
+@keyframes apple-fade-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* Scroll behavior follows the platform instead of fighting it. */
+.main,.side{overscroll-behavior:contain}
+
+/* Reduced motion is a first-class state. */
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto !important}
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+  ::view-transition-old(root),::view-transition-new(root){animation:none !important}
+}
+
+/* Respect increased-transparency/contrast preferences by making glass more solid. */
+@media(prefers-reduced-transparency:reduce), (prefers-contrast:more){
+  .side,.topbar,.gsearch .box,.gres,.theme-btn,.side-theme-control{
+    background:var(--surface) !important;
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+  }
+}
+
+</style>

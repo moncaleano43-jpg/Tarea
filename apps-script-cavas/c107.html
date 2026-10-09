@@ -1,0 +1,131 @@
+<style>
+
+/* ============================================================
+   V4 · Refined Apple shell
+   Fixes: light-mode sidebar contrast, oversized dark rail,
+   theme variable mismatch and navigation hierarchy.
+   ============================================================ */
+:root{
+  --side-bg:rgba(248,248,250,.78);
+  --side-ink:#1d1d1f;
+  --side-muted:#6e6e73;
+  --side-active:rgba(0,122,255,.10);
+  --side-active-ink:#007aff;
+  --side-hover:rgba(0,0,0,.045);
+}
+:root[data-theme="dark"]{
+  --side-bg:rgba(20,20,22,.72);
+  --side-ink:#f5f5f7;
+  --side-muted:#98989d;
+  --side-active:rgba(255,255,255,.105);
+  --side-active-ink:#ffffff;
+  --side-hover:rgba(255,255,255,.055);
+}
+
+/* The sidebar is navigation chrome, not a full dark wall. */
+.app{grid-template-columns:244px minmax(0,1fr);gap:0}
+.side{
+  width:auto;
+  margin:12px 0 12px 12px;
+  height:calc(100vh - 24px);
+  min-height:0;
+  padding:16px 10px 12px;
+  border:0 !important;
+  border-radius:22px;
+  background:var(--side-bg) !important;
+  color:var(--side-ink) !important;
+  box-shadow:0 8px 32px rgba(0,0,0,.07), inset 0 1px 0 rgba(255,255,255,.32) !important;
+  backdrop-filter:blur(28px) saturate(175%);
+  -webkit-backdrop-filter:blur(28px) saturate(175%);
+  overflow-y:auto;
+}
+:root[data-theme="dark"] .side{
+  box-shadow:0 12px 38px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.055) !important;
+}
+
+.brand{padding:4px 8px 18px;gap:11px}
+.brand .logo{width:38px;height:38px;border-radius:11px}
+.brand b{color:var(--side-ink) !important;font-size:.98rem}
+.brand span{color:var(--side-muted) !important}
+
+.nav-g{color:var(--side-muted) !important;padding:16px 10px 7px}
+.nav a{
+  min-height:42px;
+  padding:0 11px;
+  border-radius:12px;
+  color:var(--side-ink) !important;
+  font-size:.93rem;
+}
+.nav a:hover{
+  background:var(--side-hover) !important;
+  color:var(--side-ink) !important;
+}
+.nav a[aria-current="page"]{
+  background:var(--side-active) !important;
+  color:var(--side-active-ink) !important;
+  font-weight:650;
+  box-shadow:none !important;
+}
+.nav a[aria-current="page"] svg{color:var(--side-active-ink) !important}
+.nav a .cnt{box-shadow:none}
+.side-foot{color:var(--side-muted) !important;padding:12px 10px 2px}
+
+/* Header now feels attached to the content instead of sitting over the rail. */
+.topbar{
+  min-height:64px;
+  margin:0;
+  padding:10px 24px;
+  border:0 !important;
+  box-shadow:0 6px 22px rgba(0,0,0,.045) !important;
+}
+
+/* Remove the old full-height rail when collapsed; preserve mobile drawer behavior. */
+body.side-collapsed .app{grid-template-columns:0 minmax(0,1fr)}
+body.side-collapsed .side{margin-left:0;transform:translateX(-110%)}
+
+/* The light theme must use light navigation chrome. */
+:root[data-theme="light"] .side-theme-control{
+  color:var(--side-ink) !important;
+  background:rgba(255,255,255,.68) !important;
+}
+:root[data-theme="dark"] .side-theme-control{
+  color:var(--side-ink) !important;
+  background:rgba(255,255,255,.055) !important;
+}
+
+/* Keep the content readable: glass belongs mostly to chrome. */
+.content{padding:24px 28px 80px}
+.home-v2 .kpi,.home-v2 .attention-card,.home-v2 .collector-panel{
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+}
+
+/* Mobile: restore full drawer geometry. */
+@media(max-width:900px){
+  .app{grid-template-columns:0 minmax(0,1fr)}
+  .side{
+    position:fixed;
+    left:12px;top:12px;bottom:12px;
+    width:min(286px,calc(100vw - 24px));
+    height:auto;
+    margin:0;
+    transform:translateX(-115%);
+    z-index:100;
+  }
+  body:not(.drawer-open) .side{transform:translateX(-115%)}
+  body.drawer-open .side{transform:translateX(0)}
+  .scrim{z-index:90}
+  .content{padding:18px 16px 70px}
+  .main{grid-column:1/-1;min-width:0;width:100%}
+  .topbar{gap:8px;padding:10px 12px}
+  .topbar .gsearch{flex:1 1 auto;min-width:0}
+  .topbar .top-status{display:none}
+  .botbtn .bb-txt{display:none}
+  body.bot-open .content{padding-right:16px}
+}
+
+@media(prefers-reduced-transparency:reduce), (prefers-contrast:more){
+  .side{background:var(--surface) !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important}
+}
+
+</style>

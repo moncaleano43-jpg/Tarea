@@ -1,0 +1,28 @@
+<script>
+/* Mantener los estilos correctivos al final sin recorrer estilos en cada mutación de la interfaz. */
+(function(){
+  var run=function(){
+    var b=document.body;if(!b)return;
+    var all=document.querySelectorAll('style'),mine=document.querySelectorAll('style[id^="v42-"]');
+    if(!mine.length)return;
+    var lastMine=mine[mine.length-1],after=false;
+    for(var i=all.length-1;i>=0;i--){
+      if(all[i]===lastMine)break;
+      if(all[i].id.indexOf('v42-')!==0){after=true;break;}
+    }
+    if(after||lastMine.parentNode!==b)mine.forEach(function(x){b.appendChild(x);});
+  };
+  run();
+  new MutationObserver(function(mutations){
+    var hasStyle=mutations.some(function(m){
+      return Array.from(m.addedNodes).concat(Array.from(m.removedNodes)).some(function(n){
+        return n.nodeType===1&&(n.tagName==='STYLE'||(n.querySelector&&n.querySelector('style')));
+      });
+    });
+    if(!hasStyle)return;
+    clearTimeout(run.t);run.t=setTimeout(run,100);
+  }).observe(document.documentElement,{childList:true,subtree:true});
+  [300,1200,3000].forEach(function(ms){setTimeout(run,ms);});
+})();
+
+</script>

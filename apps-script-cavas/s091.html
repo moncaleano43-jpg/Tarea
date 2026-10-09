@@ -1,0 +1,168 @@
+<script>
+/* ============================================================
+   78-plan-integracion.js · Integra el análisis con el resto del programa
+   · Campana de alertas: suma las alertas del análisis (tanques, merma, agua, trasiegos, datos).
+   · Inicio: tarjeta «Informe del analista» con lo más importante de hoy.
+   · Tanques: cada ficha de fermentador muestra su estado de merma (semáforo, Hl frente a lo esperado).
+   · Cifra: responde preguntas sobre tanques por vigilar, factores, datos que ayudarían y capacidad.
+   Se carga al final: usa lo que exportan 71b–71i (App.PlanBase).
+   ============================================================ */
+(function () {
+  'use strict';
+  const A = window.App;
+  if (!A || !A.Analisis || !A.PlanBase || !A.PlanBase.tanqueEngine) return;
+  const AN = A.Analisis, B = A.PlanBase, An1 = A.An1;
+  const { fmt, esc } = AN;
+  const ctx = () => AN.contexto();
+  const sg = (v, d = 1) => (v == null || !Number.isFinite(v) ? '—' : (v > 0 ? '+' : '') + fmt(v, d));
+  const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const corta = (t, n) => { t = String(t || ''); return t.length <= n ? t : t.slice(0, n).replace(/\s+\S*$/, '') + '…'; };
+  const ST = { rojo: ['Revisar', 'bad'], ambar: ['Vigilar', 'warn'], normal: ['En línea', 'ok'], bueno: ['Mejor de lo esperado', 'ok'], pocos: ['Pocos datos', ''] };
+
+  /* ---------- Campana de alertas ---------- */
+  let evCache = [], evT = 0, evData = null;
+  function eventosAnalisis() {
+    const d = A.ExcelCavas ? A.ExcelCavas.data() : null;
+    if (evT && Date.now() - evT < 60000 && evData === d) return evCache;
+    try {
+      evCache = B.alertas(ctx()).filter((x) => x.sev === 'alta' || x.sev === 'media').slice(0, 6)
+        .map((x, i) => ({ key: 'an:' + x.area + ':' + x.titulo, at: 0, title: `${x.area} · ${x.titulo}`, sub: corta(x.detalle, 150), sev: x.sev === 'alta' ? 'crit' : 'warn', go: 'analisis/' + (x.tab || 'analista-dia'), o: 5 + i }));
+    } catch (e) { evCache = []; }
+    evT = Date.now(); evData = d;
+    return evCache;
+  }
+  function campana() {
+    const P = A.PlatformFinish;
+    if (!P || !P.events || P.__an) return;
+    const ev = P.events; P.events = () => ev.call(P).concat(eventosAnalisis()); P.__an = true;
+  }
+
+  /* ---------- Inicio: tarjeta del analista ---------- */
+  function tarjetaInicio(vista) {
+    if (vista.querySelector('[data-an-inicio]') || !A.S || !A.S.ready) return;
+    let al = [], pasos = [], E = { T: [] };
+    try { const c = ctx(); al = B.alertas(c).filter((x) => x.sev === 'alta' || x.sev === 'media'); pasos = B.planResumen ? B.planResumen(c) : []; E = B.tanqueEngine(c); } catch (e) { return; }
+    const vig = (E.T || []).filter((t) => t.st === 'ambar' || t.st === 'rojo');
+    const nodo = document.createElement('section');
+    nodo.className = 'pl an-inicio'; nodo.setAttribute('data-an-inicio', '');
+    nodo.innerHTML = `<div class="pl-h"><div><span class="pl-k">INFORME DEL ANALISTA</span><h2>Lo que haría hoy</h2></div><a class="pl-mas" href="#/analisis/analista-dia">Abrir el informe →</a></div>
+      <div class="pl-cols"><div class="pl-rev"><h3>Alertas del análisis</h3>${al.length ? al.slice(0, 3).map((x) => `<a class="pl-hall ${x.sev}" href="#/analisis/${esc(x.tab || 'analista-dia')}"><i></i><span><b>${esc(x.titulo)}</b><small>${esc(corta(x.detalle, 130))}</small></span></a>`).join('') : '<p class="pl-vacio">Sin alertas: nada se sale de lo esperado.</p>'}</div>
+      <div class="pl-acc"><h3>Acciones que más importan</h3>${pasos.slice(0, 3).map((p, i) => `<div class="an-in-p"><b>${i + 1}. ${esc(p.t)}</b></div>`).join('') || '<p class="pl-vacio">Sin acciones pendientes.</p>'}
+        <a class="btn" href="#/analisis/tanques">${vig.length ? `${vig.length} tanque${vig.length === 1 ? '' : 's'} por vigilar` : 'Estado de los tanques'}</a></div></div>`;
+    const pulso = vista.querySelector('[data-cifra-pulso]');
+    if (pulso && pulso.parentElement) pulso.parentElement.insertBefore(nodo, pulso.nextSibling);
+    else { const ref = vista.querySelector('.cavas-summary'); if (ref && ref.parentElement) ref.parentElement.insertBefore(nodo, ref.nextSibling); else vista.prepend(nodo); }
+  }
+
+  /* ---------- Tanques: estado de merma en cada ficha de FV ---------- */
+  function fichasTanques(vista) {
+    const lista = vista.querySelector('#cavasList');
+    if (!lista) return;
+    let E;
+    try { E = B.tanqueEngine(ctx()); } catch (e) { return; }
+    if (!E.byTq || !E.byTq.size) return;
+    const decorar = () => {
+      lista.querySelectorAll('article.cavas-tank.fermentation[data-go]').forEach((card) => {
+        if (card.querySelector('.tq-chip')) return;
+        const tq = +String(card.dataset.go).split('/').pop(), t = E.byTq.get(tq);
+        if (!t) return;
+        const [txt, tono] = ST[t.st] || ST.pocos, ref = card.querySelector('.cavas-brand') || card.querySelector('.cavas-card-top');
+        const chip = document.createElement('a');
+        chip.className = `tq-chip st-${t.st}`; chip.href = '#/analisis/tanques'; chip.title = 'Ver el análisis de merma de este tanque';
+        chip.innerHTML = `<i></i><b>Merma: ${txt}</b><small>${t.nPer ? `${fmt(t.tasa, 1)} % · ${sg(t.exceso, 0)} Hl` : t.z != null ? `${sg(t.m8, 1)} pp (últimos ${t.last.length})` : 'pocos lotes'}</small>`;
+        chip.addEventListener('click', (e) => { e.stopPropagation(); });
+        if (ref && ref.parentElement) ref.parentElement.insertBefore(chip, ref.nextSibling);
+      });
+    };
+    decorar();
+    if (!lista.__anObs) { lista.__anObs = new MutationObserver(() => decorar()); lista.__anObs.observe(lista, { childList: true, subtree: false }); }
+  }
+
+  /* ---------- Cifra ---------- */
+  function respuestaTanques(R, arg) {
+    const E = B.tanqueEngine(ctx());
+    if (!E.T || !E.T.length) { R.p('Todavía no tengo suficientes lotes de fermentación con merma para valorar los tanques.'); return; }
+    if (arg && arg.tq) {
+      const t = E.byTq.get(arg.tq);
+      if (!t) { R.p(`No tengo lotes con merma del FV ${arg.tq} para valorarlo.`); R.go_('Ver los tanques', 'analisis/tanques', {}); return; }
+      const [txt] = ST[t.st] || ST.pocos;
+      R.h(`FV ${t.tq}`, `${txt}${t.cls === 'grande' ? ' · tanque grande' : ''}`);
+      R.p(t.z == null ? `Tiene solo ${t.n} lotes con merma; todavía no alcanzan para valorarlo.` : t.st === 'rojo' || t.st === 'ambar' ? `Sus últimos ${t.last.length} lotes perdieron <b>${fmt(t.m8, 1)} puntos más</b> de lo esperado por su marca y tamaño (${fmt(t.z, 1)} errores estándar).` + (t.st === 'ambar' ? ' Puede ser casualidad: con tantos tanques algunos aparecen así; se confirma con los próximos lotes.' : ' Es un patrón: conviene revisar válvulas, nivel y mangueras de trasiego.') : `Sus últimos ${t.last.length} lotes van ${t.st === 'bueno' ? 'mejor que' : 'en línea con'} lo esperado (${sg(t.m8, 1)} puntos).`);
+      R.kpis([{ label: 'Merma del periodo', value: t.tasa != null ? fmt(t.tasa, 1) : '—', unit: t.tasa != null ? '%' : '' }, { label: 'Frente a lo esperado', value: t.nPer ? sg(t.exceso, 0) : '—', unit: t.nPer ? 'Hl' : '' }, { label: 'Ocupación', value: t.occ != null ? fmt(t.occ, 0) : '—', unit: t.occ != null ? '%' : '' }]);
+      R.p(`Un lote suelto varía unos ±${fmt(E.noise, 0)} Hl sin que signifique nada; por eso el estado mira los últimos 8 lotes.`);
+      R.go_(`Ver el FV ${t.tq}`, `fv/detalle/${t.tq}`, {}); R.go_('Ver todos los tanques', 'analisis/tanques', {});
+      R.chip('¿Qué tanques hay que vigilar?', '¿Qué tanques hay que vigilar?');
+      return;
+    }
+    const vig = E.T.filter((t) => t.st === 'rojo' || t.st === 'ambar').sort((a, b) => b.z - a.z);
+    R.h('Tanques por vigilar', `${E.T.length} fermentadores revisados`);
+    if (!vig.length) R.p('Ninguno se sale de lo esperado por su marca y tamaño de tanque.');
+    else {
+      R.p(`<b>${vig.length}</b> con merma reciente por encima de lo esperado; con tantos tanques, uno o dos así son normales por azar.`);
+      R.list(vig.slice(0, 6).map((t) => `<b>FV ${t.tq}</b> · ${(ST[t.st] || [''])[0]}: últimos ${t.last.length} lotes ${sg(t.m8, 1)} pp (${fmt(t.z, 1)} errores estándar)`));
+      vig.slice(0, 3).forEach((t) => R.chip(`Cómo va el tanque ${t.tq}`, `¿Cómo va el tanque ${t.tq}?`));
+    }
+    R.go_('Abrir «Tanques»', 'analisis/tanques', {});
+  }
+  function respuestaFactores(R) {
+    const M = B.modeloVel(ctx()), Ma = B.modeloArr ? B.modeloArr(ctx()) : null;
+    R.h('Qué afecta a la fermentación', 'asociaciones sobre todo el histórico');
+    if (!M) { R.p('Necesito más fermentaciones con levadura identificada para estimar el efecto de cada factor.'); R.go_('Abrir «Qué afecta a qué»', 'analisis/factores', {}); return; }
+    const b = M.fit.b;
+    R.p(`<b>Velocidad (horas hasta 75 %)</b>, controlando los demás: tanque grande <b>${sg(b[4], 1)} h</b>; una generación más de levadura <b>${sg(b[1], 1)} h</b>; +0,1 de pH de la levadura <b>${sg(b[2], 1)} h</b>; un día más guardada la levadura <b>${sg(b[3], 1)} h</b>; +1 millón de células/ml a las 3 h <b>${sg(b[5], 2)} h</b>.`);
+    if (Ma) R.p(`<b>Arranque (horas hasta 15 %)</b>: +1 ppm de oxígeno del mosto <b>${sg(Ma.fit.b[1], 1)} h</b> (más oxígeno se asocia a un arranque más lento).`);
+    R.p('<b>No se ve efecto</b> sobre la merma de ninguno de los factores medidos. Son asociaciones, no causas comprobadas.');
+    R.go_('Abrir «Qué afecta a qué»', 'analisis/factores', {}); R.chip('¿Qué datos ayudarían a predecir mejor?', '¿Qué datos ayudarían a predecir mejor?');
+  }
+  function respuestaDatos(R) {
+    const res = B.resultadosAnalista ? B.resultadosAnalista(ctx()) : [];
+    R.h('Qué dato nuevo ayudaría a predecir mejor', 'dónde está lo que todavía no se explica');
+    const reales = res.filter((o) => o.real);
+    if (!reales.length) { R.p('Con los datos de hoy, lo que queda sin explicar casi no tiene estructura: mejora midiendo mejor, no registrando más variables.'); }
+    else R.list(reales.map((o) => `<b>${esc(o.label)}</b> (${fmt(o.w * 100, 0)} % de lo que queda se comparte ${{ tq: 'en el tanque', dia: 'el mismo día', sem: 'la misma semana', mes: 'el mismo mes' }[o.mejor]}): ${esc(o.falta)}`));
+    const ruido = res.filter((o) => !o.real).map((o) => o.label.toLowerCase());
+    if (ruido.length) R.p(`Sin estructura (ruido de medición): ${ruido.join(', ')}.`);
+    R.go_('Abrir el informe del analista', 'analisis/analista-dia', {});
+  }
+  function respuestaCapacidad(R) {
+    const c = ctx(), E = B.tanqueEngine(c), X = E.T && E.T.length ? B.estanciaSpec(E) : null;
+    const core = (E.T || []).filter((t) => t.occ != null && t.occ >= 50 && t.nOcc >= 3);
+    const stay = An1.med(core.map((t) => t.stay).filter((v) => v != null)), gap = An1.med(core.map((t) => t.gap).filter((v) => v != null)) || 0;
+    R.h('Capacidad de los fermentadores', `${core.length} tanques con uso normal`);
+    if (!core.length || stay == null) { R.p('No tengo datos de ocupación suficientes.'); return; }
+    const ciclo = stay + gap, base = (core.length * 30) / ciclo, dia = (core.length * 30) / (ciclo - 1) - base, medIn = An1.med(An1.vals(E.lots, 'input')) || 3800;
+    R.p(`Hoy los fermentadores trabajan con una estancia mediana de <b>${fmt(stay, 1)} d</b> y <b>${fmt(gap, 1)} d</b> entre lotes: unos <b>${fmt(base, 0)} lotes al mes</b>. Cada día menos de estancia liberaría <b>${fmt(dia, 1)} lotes al mes</b> (≈ ${fmt(dia * medIn, 0)} Hl), siempre que haya mosto y demanda para llenarlos.`);
+    if (X && X.todas) R.p(`Además, ${fmt(Math.min(...X.marcas.map((m) => m.sobre)), 0)} a ${fmt(Math.max(...X.marcas.map((m) => m.sobre)), 0)} % de los lotes pasa más tiempo del «Tiempo máx en FV» de la hoja de especificaciones.`);
+    R.go_('Abrir el simulador', 'analisis/simulador', {}); R.go_('Ver ocupación por tanque', 'analisis/tanques', {});
+  }
+  function respuestaAnalista(R) {
+    const c = ctx(), al = B.alertas(c).filter((x) => x.sev === 'alta' || x.sev === 'media'), pasos = B.planResumen ? B.planResumen(c) : [];
+    R.h('Lo que haría hoy', 'informe del analista');
+    if (al.length) { R.p('<b>Alertas:</b>'); R.list(al.slice(0, 4).map((x) => `${esc(x.titulo)}`)); } else R.p('No veo alertas hoy.');
+    if (pasos.length) { R.p('<b>Acciones que más importan:</b>'); R.list(pasos.slice(0, 3).map((p) => `<b>${esc(p.t)}</b> — ${esc(p.d)}`)); }
+    R.go_('Abrir el informe del analista', 'analisis/analista-dia', {}); R.chip('¿Qué datos ayudarían a predecir mejor?', '¿Qué datos ayudarían a predecir mejor?');
+  }
+
+  A.CifraExt = A.CifraExt || [];
+  A.CifraExt.push(
+    { id: 'tanques', match: (q) => { const n = /\b(?:tanque|fv|utq|fermentador)\s*(?:n[o°]?\s*)?(\d{1,2})\b/.exec(q); if (n && /como (va|esta|anda|vienen)|estado|semaforo|merma|vigilar|revisar/.test(q) && !/agua|aseo|trasiego|levadura/.test(q) && /como (va|esta|anda)|estado|semaforo|vigilar/.test(q)) return { tq: +n[1] }; return /\b(tanques?|fermentadores?)\b.*\b(vigilar|vigilancia|semaforo|en revision|por revisar)\b|\bvigilar\b.*\btanques?\b|estado de los (tanques|fermentadores)|como (van|estan|andan) (los )?(tanques|fermentadores)/.test(q) ? {} : null; }, responder: respuestaTanques },
+    { id: 'factores', match: (q) => (/\bque (afecta|afectan|influye|influyen|mueve|mueven|explica|explican|hace|hacen)\b.*\b(velocidad|rapidez|arranque|extracto final|fermentacion|fermenta|fermentan)\b/.test(q) || /\bfactores?\b.*\b(afectan|velocidad|fermentacion|arranque)\b/.test(q) || /\bque (hace|hacen) (mas )?(rapida|lenta|rapido|lento)\b.*\bfermentacion\b/.test(q)) ? {} : null, responder: respuestaFactores },
+    { id: 'datos', match: (q) => (/\bque datos?\b.*\b(ayudar\w*|faltan?|hacen falta|deberia\w*|registr\w*|toma\w*|captur\w*|mejor\w*)\b/.test(q) && /predic|proyec|pronost|mejor|ayud/.test(q)) || /\bmejorar\b.*\b(prediccion\w*|proyeccion\w*|pronostic\w*)\b/.test(q) || /\bque no (estamos|se) (registr\w*|toma\w*|mide\w*)\b/.test(q) ? {} : null, responder: respuestaDatos },
+    { id: 'capacidad', match: (q) => (/\bcuantos lotes\b.*\b(mas|ganamos|ganar|podemos|liberar\w*|se ganan)\b/.test(q) || /\bcapacidad\b.*\b(fermentador\w*|tanques?)\b/.test(q) || /\bocupacion\b.*\b(fermentador\w*|tanques?)\b/.test(q) || /\bdia menos de estancia\b|\bbajamos\b.*\bestancia\b/.test(q)) ? {} : null, responder: respuestaCapacidad },
+    { id: 'analista', match: (q) => (/\banalista\b/.test(q) || /\binforme del analista\b/.test(q) || /\bque (haria|harias|dirias|diria) (hoy|ahora)?\b/.test(q) || /\bresumen para la reunion\b/.test(q)) ? {} : null, responder: respuestaAnalista }
+  );
+
+  /* ---------- Enganches (el programa se arma por partes; se espera a que existan) ---------- */
+  function enganchar() {
+    campana();
+    if (A.Seccion && A.Seccion.registrar && !enganchar.hecho) {
+      A.Seccion.registrar('inicio', tarjetaInicio);
+      A.Seccion.registrar('tanques', fichasTanques);
+      enganchar.hecho = true;
+    }
+  }
+  enganchar();
+  window.addEventListener('load', () => { enganchar(); setTimeout(enganchar, 800); });
+})();
+
+</script>

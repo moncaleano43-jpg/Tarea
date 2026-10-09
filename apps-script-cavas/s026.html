@@ -1,0 +1,23 @@
+<script>
+
+/* v36 — búsqueda universal ampliada (marcas, histórico, páginas, Cifra) */
+(function(){
+  if(!window.App||!App.Hist2||!App.Marcas) return;
+  const esc=App.U.esc, nrm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9\s]/g," ").replace(/\s+/g," ").trim();
+  const tit=s=>String(s||"").toLowerCase().replace(/(^|\s)\S/g,m=>m.toUpperCase());
+  const PAG=[["Analista de datos","Proyecciones, tendencias y gráficos","db","analista",/analista|grafic|tendenc|correl|proyec/],["Comparar marcas, lotes o familias","Comparador universal","db","comparar/marcas",/compar|versus|\bvs\b/],["Histórico de fermentación","Explorador de fermentaciones reales","history","historico",/histor|fermentacion/],["Análisis","Centro de inteligencia y proyecciones","db","analisis",/analis|inteligencia|proyec|anomal|gemelo/],["Configuración · Marcas","Agregar o editar marcas","settings","config",/config|ajuste|marca|alta|pin|contrasena/]];
+  function extra(){ const q=document.getElementById("gq"), res=document.getElementById("gres"); if(!q||!res) return; const t=nrm(q.value); if(t.length<2) return; res.querySelectorAll("[data-v36x]").forEach(n=>n.remove());
+    const G=[]; const ms=App.Marcas.todas().filter(m=>{ const n=nrm(m.nombre); return n.includes(t)||(t.length>2&&t.includes(n)); });
+    if(ms.length) G.push(["Marcas",ms.slice(0,4).map(m=>({ic:"db",t1:tit(m.nombre)+(m.activa?"":" (inactiva)"),t2:`${App.Hist2.stats(m.id).n} fermentaciones históricas · alta ${m.alta!=null?m.alta+" °P":"sin definir"}`,go:"ficha/marca/"+encodeURIComponent(m.id)}))]);
+    const H=App.Hist2.hist().filter(h=>nrm([h.lote,"fv "+h.tq,h.lev&&h.lev.n,h.marca].join(" ")).includes(t)).sort((a,b)=>(b.finT||0)-(a.finT||0)).slice(0,5);
+    if(H.length) G.push(["Histórico de fermentación",H.map(h=>({ic:"history",t1:h.lote+" · FV "+(h.tq??"—")+" · "+tit(h.marca),t2:(h.lev&&h.lev.n?h.lev.n+" · ":"")+"E.A 72 h "+(h.e72!=null?String(h.e72).replace(".",","):"—")+" °P",go:"ficha/fv/"+encodeURIComponent(h.lote)}))]);
+    const P=PAG.filter(p=>p[4].test(t)||nrm(p[0]).includes(t)); if(P.length) G.push(["Ir a",P.map(p=>({ic:p[2],t1:p[0],t2:p[1],go:p[3]}))]);
+    const w=document.createElement("div"); w.dataset.v36x="1"; w.innerHTML=G.map(([h,items])=>`<h4>${esc(h)}</h4>${items.map(App.C.searchResult).join("")}`).join("")+`<button type="button" class="v36-ask" data-v35bot="${esc(q.value)}">Preguntar a Cifra: «${esc(q.value)}» ›</button>`;
+    const none=res.querySelector(".none"); if(none&&G.length) none.remove(); res.prepend(w); }
+  document.addEventListener("input",e=>{ if(e.target&&e.target.id==="gq") setTimeout(extra,0); });
+  document.addEventListener("focusin",e=>{ if(e.target&&e.target.id==="gq") setTimeout(extra,0); });
+  document.addEventListener("click",e=>{ if(e.target.closest&&e.target.closest(".v36-ask")){ const r=document.getElementById("gres"); if(r) r.classList.add("hidden"); } },true);
+  setTimeout(()=>{ try{ App.render&&App.render(true); }catch(e){} },0);
+})();
+
+</script>

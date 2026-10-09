@@ -1,0 +1,163 @@
+<script>
+
+/* ============================================================
+   inicio.js — pantalla de inicio
+   ============================================================ */
+(function(){
+  const {esc,f,fmtS,fmt,HOUR,DAY,parseDT} = App.U, C=App.C;
+  const ORD={rojo:0,naranja:1,verde:2,amarillo:3,gris:4,sin:5};
+  function picker(title,lista,accion,vacio){
+    if(!App.Store.canWrite){ App.U.toast("Modo de solo lectura."); return; }
+    if(!lista.length){ App.U.toast(vacio); return; }
+    const d=App.UI.info(title,`<div class="card" style="overflow:hidden">${lista.map(({t,r,st})=>`<button type="button" class="lrow" data-pick="${esc(t.lote)}"><span class="m"><b>FV ${t.tq} · ${esc(t.lote)}</b><span>${esc(t.marca)} · ${esc((t.levadura||{}).nombre||"sin levadura")}${r.ext!=null?" · "+f(r.ext)+" °P":""}</span></span>${C.status(App.T.estado(st))}</button>`).join("")}</div>`);
+    d.addEventListener("click",e=>{ const b=e.target.closest("[data-pick]"); if(!b) return; d.close(); accion(b.dataset.pick); });
+  }
+  App.Quick={
+    muestra(){ const l=App.D.pend().sort((a,b)=>a.t.tq-b.t.tq); picker("Agregar muestra: elija el FV",l,lote=>App.Act.agregarMuestra(lote),"No hay tanques activos."); },
+    retiro(){ const l=App.D.pend().filter(x=>x.r.t0).sort((a,b)=>ORD[a.st.k]-ORD[b.st.k]||a.r.t0-b.r.t0); picker("Retirar levadura: elija el FV",l,lote=>App.Inv.retiro(lote),"No hay levadura pendiente por retirar."); },
+    crear(){ App.Act.crear(); }, colectores(){ App.go("colectores"); }
+  };
+  document.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("[data-qa]"); if(b&&App.Quick[b.dataset.qa]) App.Quick[b.dataset.qa](); });
+
+  App.V.inicio={
+    render(){
+      const now=Date.now(), p=App.D.pend(now),
+        n=k=>p.filter(x=>x.st.k===k).length,
+        occ=Object.keys(App.S.colectores).length;
+
+      const atencion=p
+        .filter(x=>["rojo","naranja","verde","amarillo"].includes(x.st.k))
+        .sort((a,b)=>ORD[a.st.k]-ORD[b.st.k]||((a.r.t0||Infinity)-(b.r.t0||Infinity)));
+
+      const ops=App.Hist.eventos()
+        .filter(x=>x.tipo!=="siembra"||parseDT(x.t)<=now)
+        .slice(0,6);
+
+      const col=c=>{
+        const ps=[1,2].map(s=>App.S.colectores[`c${c}-${s}`]);
+        const u=ps.filter(Boolean).length;
+        const k=ps.filter(Boolean)
+          .map(x=>App.T.tiempoColector(x,now).k)
+          .sort((a,b)=>({rojo:0,naranja:1,verde:2,sin:3}[a]-{rojo:0,naranja:1,verde:2,sin:3}[b]))[0]||"verde";
+
+        const fill = u===2 ? 100 : u===1 ? 50 : 0;
+        const accent = ({verde:"var(--st-lista)",naranja:"var(--st-vence)",rojo:"var(--st-vencida)",sin:"var(--st-sin)"})[k];
+        return `<button type="button" class="cmini"
+          data-go="colectores/${c}" data-qv="col:${c}"
+          style="--c:${accent};--collector-fill:${fill}%">
+          <span class="collector-visual" aria-label="Colector C${c}, ${u} de 2 posiciones ocupadas">
+            <svg viewBox="0 0 92 112" role="img" aria-hidden="true">
+              <defs>
+                <clipPath id="collectorClip${c}"><rect x="17" y="23" width="58" height="75" rx="10"/></clipPath>
+                <linearGradient id="collectorGlow${c}" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0" stop-color="${accent}" stop-opacity=".95"/>
+                  <stop offset="1" stop-color="${accent}" stop-opacity=".55"/>
+                </linearGradient>
+              </defs>
+              <rect x="17" y="23" width="58" height="75" rx="10" fill="none" stroke="currentColor" stroke-width="3"/>
+              <rect x="25" y="10" width="42" height="15" rx="6" fill="none" stroke="currentColor" stroke-width="3"/>
+              <path d="M46 4v7M39 4h14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+              <path d="M17 43h58M17 73h58" fill="none" stroke="currentColor" stroke-width="2" opacity=".55"/>
+              <rect x="17" y="${98-fill*0.75}" width="58" height="${fill*0.75}" fill="url(#collectorGlow${c})" clip-path="url(#collectorClip${c})"/>
+              <circle cx="46" cy="39" r="5" fill="${accent}" opacity="${u?0.95:0.28}"/>
+              <path d="M46 98v9M39 107h14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span class="collector-meta"><b>C${c}</b><small>${u===0?"Libre":u===1?"1 levadura":"2 levaduras"}</small></span>
+          <span class="collector-state" style="color:${accent}">${u}/2</span>
+        </button>`;
+      };
+
+      return `<div class="home-v2">
+        <div class="page-h">
+          <div>
+            <span class="home-eyebrow">CENTRO DE CONTROL</span>
+            <h1>Tu operación, de un vistazo</h1>
+            <p>Revisa qué necesita atención y entra directo al siguiente paso · actualizado ${fmtS(new Date())}</p>
+          </div>
+          <div class="acts">
+            <button class="btn" type="button" data-qa="muestra">${C.icon("sample")}Agregar muestra</button>
+            <button class="btn pri" type="button" data-qa="retiro">${C.icon("exit")}Retirar levadura</button>
+          </div>
+        </div>
+
+        <section class="sec" aria-label="Indicadores">
+          <div class="kpis">
+            ${C.kpi({label:"Retiro pendiente",value:n("rojo"),color:"var(--st-vencida)",go:"tanques/pendiente",sub:"Revisar ahora"})}
+            ${C.kpi({label:"Listos para retirar",value:n("verde"),color:"var(--st-lista)",go:"tanques/lista",sub:"T0 cumplido"})}
+            ${C.kpi({label:"Retiro próximo",value:n("naranja"),color:"var(--st-vence)",go:"tanques/proximo",sub:"En la siguiente ventana"})}
+            ${C.kpi({label:"En fermentación",value:n("gris")+n("sin"),color:"var(--st-espera)",go:"tanques/proceso",sub:"Monitorear muestras"})}
+          </div>
+        </section>
+
+        <div class="home-grid">
+          <section class="home-panel sec">
+            <div class="sec-h">
+              <div><span class="home-section-kicker">SIGUIENTE PASO</span><h2>Tanques que requieren atención <span class="home-count">${atencion.length}</span></h2></div>
+              <a class="more" href="#/tanques">Ver todos los tanques <span aria-hidden="true">→</span></a>
+            </div>
+            ${atencion.length?`
+              <div class="attention-card">
+                ${atencion.slice(0,5).map(({t,r,st})=>{
+                  const nx=C.siguiente(r,st,now),
+                    av=App.T.genAviso(App.T.genResultante(r));
+                  return `<div class="attention-row" style="--row-color:${C.stColor(st.k)}">
+                    <span class="attention-main" data-go="tanque/${esc(t.lote)}" data-qv="fv:${esc(t.lote)}">
+                      <b>FV ${t.tq} · ${esc(t.lote)}</b>
+                      <span>${esc(t.marca)} · ${esc((t.levadura||{}).nombre||"—")}${av?" · "+esc(av.corto):""}</span>
+                    </span>
+                    <span class="attention-state">
+                      ${C.status(App.T.estado(st))}
+                      <small class="${st.k==="rojo"?"past":""}"
+                        data-cdtxt="${nx.when?+nx.when:""}"
+                        data-cdlab="${esc(nx.lab)}">${esc(nx.txt)}</small>
+                    </span>
+                    ${["rojo","naranja","verde"].includes(st.k)
+                      ?`<button class="btn sm pri" type="button" data-ret="${esc(t.lote)}">Retirar</button>`
+                      :`<button class="btn sm" type="button" data-mue="${esc(t.lote)}">+ Muestra</button>`}
+                  </div>`;
+                }).join("")}
+              </div>${atencion.length>5?`<a class="home-more-attention" href="#/tanques">Ver ${atencion.length-5} tanques más que requieren atención →</a>`:""}`
+              :C.empty("check","Todo al día","Ningún tanque está en ventana de retiro ni próximo al T0.")}
+          </section>
+
+          <div class="home-panel">
+<section class="sec">
+              <div class="collector-panel">
+                <div class="collector-head">
+                  <div>
+                    <h2>Colectores</h2>
+                    <div class="collector-summary">
+                      <strong>${occ} de 12</strong> posiciones ocupadas ·
+                      ${6-Object.keys(App.S.colectores).map(id=>id.split("-")[0]).filter((v,i,a)=>a.indexOf(v)===i).length} colectores libres
+                    </div>
+                  </div>
+                  <a class="more" href="#/colectores">Abrir</a>
+                </div>
+                <div class="collector-grid">${[1,2,3,4,5,6].map(col).join("")}</div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <section class="sec">
+          <div class="sec-h">
+            <h2>Últimas operaciones</h2>
+            <a class="more" href="#/historial">Ver historial</a>
+          </div>
+          ${ops.length
+            ?`<div class="card card-p history-card" style="padding-top:4px;padding-bottom:4px">
+                ${C.timeline(ops.map(x=>({ic:x.ic,cls:x.cls,t1:x.t1,t2:x.t2,time:fmtS(x.t),go:x.id?"historial/"+x.id:null})))}
+              </div>`
+            :C.empty("history","Aún no hay operaciones","")}
+        </section>
+      </div>`;
+    },
+    mount(){
+      document.querySelectorAll("#view [data-ret]").forEach(b=>b.onclick=()=>App.Inv.retiro(b.dataset.ret));
+      document.querySelectorAll("#view [data-mue]").forEach(b=>b.onclick=()=>App.Act.agregarMuestra(b.dataset.mue));
+    }
+  };
+})();
+
+</script>

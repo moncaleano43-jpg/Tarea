@@ -1,0 +1,15 @@
+<script>
+/* Reglas de REGISTRO SV y ESPECIFICACIONES MARCA, leídas del libro de referencia. */
+(function(){
+ const H=3600000,{parseDT}=App.U,n=App.FVRegistration.num;
+ const brands={S:'ESTANDAR',STD:'ESTANDAR',L:'LIGHT',Z:'AZTECA',CC:'CLUB COLOMBIA',CLUB:'CLUB COLOMBIA',A:'AGUILA',POKER:'POKER 100%'};
+ function brand(v){return brands[String(v).toUpperCase()]||String(v||'').toUpperCase();}
+ function maturity(r){const b=brand(r.brand),col={ESTANDAR:15,AGUILA:16,LIGHT:17,AZTECA:18,'POKER 100%':19,'CLUB COLOMBIA':20}[b],spec=App.ExcelCavas.data().specifications;const find=row=>n(spec.find(x=>x.source.row===row)?.cells[col]);const start=+parseDT(r.maturation?.fin||r.fill),minimum=col?find(98):null,target=col?find(95):null;return {minimum,target,start,due:start&&minimum!=null?start+minimum*H:null,goal:start&&target!=null?start+target*H:null,elapsed:start?(Date.now()-start)/H:null,source:'ESPECIFICACIONES MARCA · fila 98 (LRL), fila 95 (TG)'};}
+ function inactive(d){const off=new Set();if(d.centrifuge!=='SI')for(const k of ['yeastRecovery','noRecoveryReason','collectorVolume','collectorTemp','recoveredYeast','yeastRemaining','dischargeConsistency','dischargeEO','centrifugeCounter','yeast','usageHours','treatedConsistency','ph','beerRecovered','beerLost','realRecovered','kgeRecovered','equivalent95','partialDischarges'])off.add(k);else if(d.yeastRecovery==='SI')off.add('noRecoveryReason');else for(const k of ['collectorVolume','collectorTemp','recoveredYeast','yeastRemaining','beerRecovered','realRecovered','kgeRecovered','equivalent95'])off.add(k);if(d.deepFreeze!=='SI')off.add('deepFreezeCase');return off;}
+ const cases=['Enf.1','Enf.1+Enf.2','Enf.1+Enf.2+Enf.Azul','Enf.2','Enf.2+Enf.Azul','Enf.Azul'];
+ function early(r,start){const m=maturity(r),time=+parseDT(start);return !!(time&&m.due&&time<m.due);}
+ function wire(form,d){if(!form)return;const off=inactive(d);form.querySelectorAll('[name]').forEach(el=>{const disabled=off.has(el.name);el.disabled=disabled||!App.Store.canWrite;const label=el.closest('label');if(label&&label.classList.contains('f')){label.hidden=disabled;label.dataset.inapplicable=disabled?'true':'';}});const box=document.getElementById('operationApplicability');if(box)box.textContent=d.centrifuge==='SI'?'Centrífuga activa · completa los datos correspondientes a la recuperación.':'Sin centrífuga · sus campos no aplican. Deep Freeze se registra por separado.';}
+ App.PlatformRules={maturity,inactive,cases,early,wire,brand};
+})();
+
+</script>

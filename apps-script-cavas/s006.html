@@ -1,0 +1,15 @@
+<script>
+
+/* Actualiza los registros del Excel ya guardados en este navegador sin perder lo hecho en la plataforma */
+App.BDMig=function(L){ const V=App.SEED_BD_VER; if(!V||!App.SEED) return false; L.config=L.config||{}; L.bdlev=L.bdlev||{}; if((L.config.bdSeed||{}).v===V) return false;
+  const seed=App.SEED.bdlev||{}; let n=0;
+  Object.entries(seed).forEach(([id,s])=>{ const o=L.bdlev[id]; const m=JSON.parse(JSON.stringify(s));
+    if(!o){ L.bdlev[id]=m; n++; return; }
+    if(o.origen!=="excel"||o.editado) return;
+    ["salidas","cambios","estadoRegistro","anulado","notas"].forEach(k=>{ if(o[k]!=null) m[k]=o[k]; });
+    if(o.colectores&&m.colectores) m.colectores=m.colectores.map((c,i)=>{ const x=o.colectores[i]; return x&&x.fechaVaciado&&!c.vacio?Object.assign({},c,{vacio:true,fechaVaciado:x.fechaVaciado,motivoVaciado:x.motivoVaciado}):c; });
+    const extra=(o.siembras||[]).filter(z=>z.hl!=null&&!(m.siembras||[]).some(y=>y.lote===z.lote&&String(y.tq)===String(z.tq))); if(extra.length) m.siembras=(m.siembras||[]).concat(extra);
+    L.bdlev[id]=m; n++; });
+  L.config.bdSeed={v:V,t:new Date().toISOString(),n}; return true; };
+
+</script>

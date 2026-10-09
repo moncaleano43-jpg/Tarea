@@ -1,0 +1,169 @@
+<script>
+
+/* ============================================================
+   bd-core.js — Base de datos de levadura (modelo + Excel)
+   Fuente de verdad inicial: hoja "B.D LEVADURA" del Excel CONTROL PROCESO CAVAS.
+   Todo funciona localmente: sin IA ni servicios externos.
+   ============================================================ */
+App.BDM=(function(){
+  const {num,parseDT,toIn,HOUR,DAY,clone,f}=App.U;
+
+  /* ---------- Límites de control (filas 3–7 de B.D LEVADURA) ---------- */
+  const LIM_DEF={
+    cons:{lab:"Consistencia",lcl:0.30,tg:0.40,ucl:0.60,t:"p"},
+    viab:{lab:"Viabilidad",lcl:0.95,tg:1,t:"p"},
+    ph:{lab:"pH",ucl:5,t:"n2"},
+    temp:{lab:"Temp. cosecha",lcl:3,tg:3.5,ucl:4,t:"c"},
+    generacion:{lab:"Generación",tg:7,ucl:10,t:"i"},
+    tempColector:{lab:"Temp. colector en resiembra",lcl:3,tg:3.5,ucl:4,t:"c"},
+    horasColector:{lab:"Horas en colector hasta resiembra",lcl:24,tg:48,ucl:72,url:96,t:"h"}
+  };
+  const LIM=()=>Object.assign({},LIM_DEF,(App.S.config.bdLimites||{}));
+  function fuera(k,v){ const L=LIM()[k]; if(!L||v==null||!isFinite(v)) return null;
+    if(L.url!=null&&v>L.url) return "sobre el límite de rechazo ("+L.url+")";
+    if(L.ucl!=null&&v>L.ucl) return "sobre el límite superior";
+    if(L.lcl!=null&&v<L.lcl) return "bajo el límite inferior";
+    return null; }
+
+  /* ---------- Reglas del Excel ---------- */
+  const DESC_DEST={BUFFER:"Buffer",U19:"UTK 19",U20:"UTK 20","UTK 19":"UTK 19","UTK 20":"UTK 20"};
+  const marcaDeNombre=n=>{ const c=String(n||"").charAt(0).toUpperCase(); return !c?null:c==="L"?"LIGHT":c==="E"?"ESTANDAR":c==="A"?"AGUILA":"AZTECA"; }; // fórmula col. C
+  const familiaDeNombre=n=>{ const c=String(n||"").charAt(1).toUpperCase(); return c||null; };                                     // fórmula col. D
+  const parseNombre=n=>{ const m=/^([A-Z])([A-Z])(\d{1,2})F(\d{1,3})$/.exec(String(n||"").trim().toUpperCase()); return m?{marca:marcaDeNombre(n),fam:m[2],gen:+m[3],tq:+m[4]}:null; };
+  const h=(a,b)=>{ a=parseDT(a); b=parseDT(b); return a&&b?(b-a)/HOUR:null; };
+
+  /* ---------- Derivados de un registro (equivalentes a las fórmulas del Excel) ---------- */
+  function derivar(b){
+    const cols=b.colectores||[], volTot=cols.reduce((s,c)=>s+(num(c.vol)||0),0);
+    const d={volEntrada:volTot,
+      pctRetiro:b.volCabeza!=null&&volTot?b.volCabeza/volTot:null,                 // K = J/(N+Q)
+      tiempoRemocion:h(b.retiro,b.finRemocion),                                      // L = (I-H)*24
+      maxCopec:b.t0?toIn(new Date(+parseDT(b.t0)+2*DAY)):b.maxCopec||null,          // AB = G+2
+      maxAbi:b.finRemocion?toIn(new Date(+parseDT(b.finRemocion)+4*DAY)):b.maxAbi||null, // AC = I+4
+      siembras:(b.siembras||[]).map(s=>Object.assign({},s,{horasColector:h(b.finRemocion,s.fecha),horasDesdeHora0:h(b.t0,s.fecha)})), // AS/AT y AI/AO
+      volActual:cols.filter(c=>!c.vacio).reduce((s,c)=>s+(num(c.vol)||0),0),
+      posActivas:cols.filter(c=>!c.vacio).length};
+    return d; }
+
+  /* ---------- Estado de un registro ---------- */
+  const ESTADOS={inventario:["En inventario","real"],utilizada:["Utilizada","manual"],descartada:["Descartada","err"],vaciada:["Vaciada sin resiembra","pend"],sincol:["Sin colector","pend"],anulado:["Anulado","err"],incompleto:["Incompleto","pend"]};
+  function estado(b,id){
+    if(b.estadoRegistro==="anulado") return "anulado";
+    if(b.incompleto) return "incompleto";
+    if(b.destino==="DES") return "descartada";
+    const vivo=Object.values(App.S.colectores).some(c=>c.levId===id);
+    const cols=b.colectores||[];
+    if(vivo||cols.some(c=>!c.vacio)) return "inventario";
+    if(!cols.length) return "sincol";
+    return (b.siembras||[]).length?"utilizada":"vaciada"; }
+  function calidad(b){ const out=[]; ["cons","viab","ph","temp","generacion"].forEach(k=>{ const r=fuera(k,num(b[k])); if(r) out.push({k,lab:LIM()[k].lab,v:num(b[k]),r}); });
+    (b.siembras||[]).forEach((s,i)=>{ const r=fuera("tempColector",num(s.tempColector)); if(r) out.push({k:"tempColector",lab:"Temp. colector resiembra "+(i+1),v:num(s.tempColector),r}); });
+    return out; }
+
+  /* ---------- Registros y movimientos ---------- */
+  function registros(){ return Object.entries(App.S.bdlev||{}).map(([id,b])=>{ const st=estado(b,id); return Object.assign({id,st,d:derivar(b)},b); }); }
+  function movimientos(lista){
+    const mv=[]; (lista||registros()).forEach(r=>{ if(r.st==="anulado"||r.incompleto&&!(r.siembras||[]).length) return;
+      const base={id:r.id,nombre:r.nombre||"(sin levadura)",gen:r.generacion,marca:r.marca,fvOrigen:r.tq,loteOrigen:r.lote};
+      (r.colectores||[]).forEach((c,i)=>mv.push(Object.assign({},base,{t:r.finRemocion||r.retiro,tipo:"entrada",hl:num(c.vol),col:c.colector,det:`Cosecha desde FV ${r.tq||"—"} · ${r.lote||"—"} a C${c.colector}`})));
+      (r.descarteDirecto||[]).forEach(x=>mv.push(Object.assign({},base,{t:r.finRemocion||r.retiro,tipo:"descarte",hl:num(x.vol),destino:x.destino,det:`Descarte directo en ${x.destino}`})));
+      if(r.destino==="DES"&&!(r.descarteDirecto||[]).length) mv.push(Object.assign({},base,{t:r.retiro,tipo:"descarte",hl:null,destino:r.destinoDescarte,det:`Descarte en ${r.destinoDescarte||"—"}`}));
+      const cols=r.colectores||[];
+      (r.siembras||[]).forEach((s,i)=>{ const c=s.orden?cols[s.orden-1]:null, hl=s.hl!=null?num(s.hl):(c&&c.vacio?num(c.vol):null);
+        mv.push(Object.assign({},base,{t:s.fecha,tipo:"siembra",hl,hlTipo:s.hl!=null?"registrado":hl!=null?"vaciado":null,col:c?c.colector:(s.colector?String(s.colector).replace(/^c(\d+).*/,"$1"):null),fv:s.tq,lote:s.lote,det:`Resiembra en FV ${s.tq||"—"} · ${s.lote||"—"}`})); });
+      cols.forEach((c,i)=>{ if(c.vacio&&!(r.siembras||[]).some(s=>s.orden===i+1)&&!(r.salidas||[]).some(x=>x.posicion===c.posicion&&+String(x.colector).replace(/\D.*$/,"")===+c.colector))
+        mv.push(Object.assign({},base,{t:c.fechaVaciado||null,tipo:"salida",hl:num(c.vol),col:c.colector,det:c.motivoVaciado||"Colector vaciado sin resiembra registrada"})); });
+      (r.salidas||[]).forEach(x=>mv.push(Object.assign({},base,{t:x.fecha,tipo:/descart/i.test(x.motivo||"")?"descarte":"salida",hl:num(x.hl??x.volRestante),col:String(x.colector||"").replace(/^c(\d+).*/,"$1")||null,fv:x.tq||null,destino:x.destino||null,det:(x.motivo||"Salida")+(x.obs?" · "+x.obs:"")})));
+      if(r.volDescarte) { const ult=(r.siembras||[]).map(s=>s.fecha).filter(Boolean).sort().pop()||null; mv.push(Object.assign({},base,{t:ult,tipo:"descarte",hl:num(r.volDescarte),info:true,det:"Levadura restante retirada para descarte (dato del Excel; no descuenta del saldo)"})); }
+    });
+    return mv.sort((a,b)=>String(b.t||"").localeCompare(String(a.t||""))); }
+  function lotes(lista){ const m={}; const key=(l,t)=>l?l+"|"+(String(t||"").slice(0,4)||"?"):null;
+    (lista||registros()).forEach(r=>{ if(r.st==="anulado") return; const k=key(r.lote,r.retiro); if(k){ (m[k]??={lote:r.lote,anio:String(r.retiro||"").slice(0,4),fv:r.tq,marca:r.marca,cosecha:[],sembrado:[]}).cosecha.push(r); }
+      (r.siembras||[]).forEach(s=>{ const k2=key(s.lote,s.fecha); if(!k2) return; (m[k2]??={lote:s.lote,anio:String(s.fecha||"").slice(0,4),fv:s.tq,marca:null,cosecha:[],sembrado:[]}).sembrado.push({r,s}); }); });
+    Object.values(App.S.tanques||{}).forEach(t=>{ const k=key(t.lote,t.fin); if(!k) return; const x=(m[k]??={lote:t.lote,anio:String(t.fin||"").slice(0,4),fv:t.tq,marca:t.marca,cosecha:[],sembrado:[]}); x.marca=x.marca||t.marca; x.tanque=t; });
+    return Object.values(m).map(x=>{ x.fecha=(x.sembrado[0]&&x.sembrado[0].s.fecha)||(x.tanque&&x.tanque.fin)||(x.cosecha[0]&&x.cosecha[0].retiro)||null; x.marca=x.marca||(x.cosecha[0]||{}).marca||null; return x; }).sort((a,b)=>String(b.fecha||"").localeCompare(String(a.fecha||""))); }
+
+  /* ---------- Fechas Excel ---------- */
+  const serialDeLocal=s=>{ const d=parseDT(s); if(!d) return null; return Date.UTC(d.getFullYear(),d.getMonth(),d.getDate(),d.getHours(),d.getMinutes(),d.getSeconds())/DAY+25569; };
+  const localDeSerial=v=>{ if(v==null||!isFinite(v)) return null; const d=new Date(Math.round((v-25569)*86400)*1000); /* redondeo al segundo y se descartan los segundos, igual que la carga inicial */ const p=n=>String(n).padStart(2,"0"); return d.getUTCFullYear()+"-"+p(d.getUTCMonth()+1)+"-"+p(d.getUTCDate())+"T"+p(d.getUTCHours())+":"+p(d.getUTCMinutes()); };
+
+  /* ============================================================
+     XLSX: escritor propio (sin librerías externas)
+     ============================================================ */
+  const CRC=(()=>{ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; t[n]=c>>>0; } return t; })();
+  const crc32=u=>{ let c=0xFFFFFFFF; for(let i=0;i<u.length;i++) c=CRC[(c^u[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; };
+  function zip(files){ const enc=new TextEncoder(), parts=[], cen=[]; let off=0;
+    files.forEach(fl=>{ const name=enc.encode(fl.name), data=typeof fl.data==="string"?enc.encode(fl.data):fl.data, crc=crc32(data);
+      const lh=new DataView(new ArrayBuffer(30)); lh.setUint32(0,0x04034b50,true); lh.setUint16(4,20,true); lh.setUint16(6,0x0800,true); lh.setUint16(8,0,true); lh.setUint16(10,0,true); lh.setUint16(12,0x21,true); lh.setUint32(14,crc,true); lh.setUint32(18,data.length,true); lh.setUint32(22,data.length,true); lh.setUint16(26,name.length,true); lh.setUint16(28,0,true);
+      parts.push(new Uint8Array(lh.buffer),name,data);
+      const ch=new DataView(new ArrayBuffer(46)); ch.setUint32(0,0x02014b50,true); ch.setUint16(4,20,true); ch.setUint16(6,20,true); ch.setUint16(8,0x0800,true); ch.setUint16(10,0,true); ch.setUint16(12,0,true); ch.setUint16(14,0x21,true); ch.setUint32(16,crc,true); ch.setUint32(20,data.length,true); ch.setUint32(24,data.length,true); ch.setUint16(28,name.length,true); ch.setUint32(42,off,true);
+      cen.push(new Uint8Array(ch.buffer),name); off+=30+name.length+data.length; });
+    const cl=cen.reduce((s,x)=>s+x.length,0), end=new DataView(new ArrayBuffer(22)); end.setUint32(0,0x06054b50,true); end.setUint16(8,files.length,true); end.setUint16(10,files.length,true); end.setUint32(12,cl,true); end.setUint32(16,off,true);
+    const all=parts.concat(cen,[new Uint8Array(end.buffer)]), out=new Uint8Array(all.reduce((s,x)=>s+x.length,0)); let p=0; all.forEach(x=>{ out.set(x,p); p+=x.length; }); return out; }
+  const xe=s=>String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  const colL=i=>{ let s=""; i++; while(i){ const m=(i-1)%26; s=String.fromCharCode(65+m)+s; i=Math.floor((i-1)/26); } return s; };
+  // estilos: 0 normal · 1 encabezado · 2 fecha-hora · 3 % · 4 decimal · 5 entero · 6 título · 7 subtítulo · 8 fecha · 9 texto en negrita
+  const STY={s:0,d:2,p:3,n:4,i:5,f:8,b:9};
+  function libro(hojas){
+    const sheetXml=hoja=>{ const cols=hoja.cols, off=hoja.titulo?3:0, rows=[];
+      if(hoja.titulo){ rows.push(`<row r="1"><c r="A1" t="inlineStr" s="6"><is><t>${xe(hoja.titulo)}</t></is></c></row>`); if(hoja.sub) rows.push(`<row r="2"><c r="A2" t="inlineStr" s="7"><is><t>${xe(hoja.sub)}</t></is></c></row>`); }
+      rows.push(`<row r="${off+1}">${cols.map((c,i)=>`<c r="${colL(i)}${off+1}" t="inlineStr" s="1"><is><t>${xe(c.h)}</t></is></c>`).join("")}</row>`);
+      hoja.rows.forEach((r,ri)=>{ const rn=off+ri+2; rows.push(`<row r="${rn}">${r.map((v,i)=>{ if(v==null||v==="") return ""; const t=cols[i].t||"s", ref=colL(i)+rn;
+        if(t==="d"||t==="f"){ const sv=typeof v==="number"?v:serialDeLocal(v); return sv==null?"":`<c r="${ref}" s="${STY[t]}"><v>${sv}</v></c>`; }
+        if(typeof v==="number"&&isFinite(v)) return `<c r="${ref}" s="${t==="n"||t==="p"||t==="i"?STY[t]:0}"><v>${v}</v></c>`;
+        return `<c r="${ref}" t="inlineStr" s="${t==="b"?9:0}"><is><t xml:space="preserve">${xe(v)}</t></is></c>`; }).join("")}</row>`); });
+      const w=cols.map((c,i)=>{ let m=String(c.h).length; hoja.rows.forEach(r=>{ const v=r[i]; const l=v==null?0:(c.t==="d"?16:c.t==="f"?10:c.t==="p"?7:String(typeof v==="number"?f(v,2):v).length); if(l>m) m=l; }); return Math.min(60,Math.max(8,m+2)); });
+      const last=colL(cols.length-1)+(off+1+hoja.rows.length);
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetPr filterMode="false"/><dimension ref="A1:${last}"/><sheetViews><sheetView workbookViewId="0"${hoja._i===0?' tabSelected="1"':""}><pane ySplit="${off+1}" topLeftCell="A${off+2}" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A${off+2}" sqref="A${off+2}"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols>${w.map((x,i)=>`<col min="${i+1}" max="${i+1}" width="${x}" customWidth="1"/>`).join("")}</cols><sheetData>${rows.join("")}</sheetData>${hoja.rows.length&&!hoja.sinFiltro?`<autoFilter ref="A${off+1}:${last}"/>`:""}<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/></worksheet>`; };
+    hojas.forEach((x,i)=>x._i=i);
+    const nombres=hojas.map(x=>x.nombre.replace(/[\\\/\?\*\[\]:]/g," ").slice(0,31));
+    const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="4"><numFmt numFmtId="164" formatCode="dd/mm/yyyy hh:mm"/><numFmt numFmtId="165" formatCode="0.0%"/><numFmt numFmtId="166" formatCode="#,##0.00"/><numFmt numFmtId="167" formatCode="dd/mm/yyyy"/></numFmts><fonts count="4"><font><sz val="10"/><name val="Arial"/></font><font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Arial"/></font><font><b/><sz val="14"/><name val="Arial"/></font><font><b/><sz val="10"/><name val="Arial"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF0A84FF"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left/><right/><top/><bottom style="thin"><color rgb="FFB0B7C3"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="10"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="166" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="1" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="167" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+    const files=[
+      {name:"[Content_Types].xml",data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${hojas.map((x,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")}<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>`},
+      {name:"_rels/.rels",data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>`},
+      {name:"docProps/core.xml",data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>Inventario de levadura</dc:title><dc:creator>Inventario de Levadura</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${new Date().toISOString().slice(0,19)}Z</dcterms:created></cp:coreProperties>`},
+      {name:"xl/workbook.xml",data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView activeTab="0"/></bookViews><sheets>${nombres.map((n,i)=>`<sheet name="${xe(n)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join("")}</sheets><definedNames>${hojas.map((x,i)=>x.rows.length&&!x.sinFiltro?`<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">'${xe(nombres[i]).replace(/'/g,"''")}'!$A$${(x.titulo?3:0)+1}:$${colL(x.cols.length-1)}$${(x.titulo?3:0)+1+x.rows.length}</definedName>`:"").join("")}</definedNames></workbook>`},
+      {name:"xl/_rels/workbook.xml.rels",data:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${hojas.map((x,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join("")}<Relationship Id="rId${hojas.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`},
+      {name:"xl/styles.xml",data:styles}
+    ].concat(hojas.map((x,i)=>({name:`xl/worksheets/sheet${i+1}.xml`,data:sheetXml(x)})));
+    return zip(files); }
+
+  /* ============================================================
+     XLSX/XLSM: lector propio (usa la descompresión nativa del navegador)
+     ============================================================ */
+  async function inflar(u){ if(typeof DecompressionStream==="undefined") throw new Error("NAVEGADOR"); const ds=new DecompressionStream("deflate-raw"); const s=new Blob([u]).stream().pipeThrough(ds); return new Uint8Array(await new Response(s).arrayBuffer()); }
+  async function abrirZip(buf){ const u=new Uint8Array(buf), dv=new DataView(buf); let e=-1; for(let i=u.length-22;i>=Math.max(0,u.length-70000);i--){ if(dv.getUint32(i,true)===0x06054b50){ e=i; break; } } if(e<0) throw new Error("FORMATO");
+    const n=dv.getUint16(e+10,true); let p=dv.getUint32(e+16,true); const ent={}, dec=new TextDecoder();
+    for(let i=0;i<n;i++){ if(dv.getUint32(p,true)!==0x02014b50) throw new Error("FORMATO"); const met=dv.getUint16(p+10,true), cs=dv.getUint32(p+20,true), nl=dv.getUint16(p+28,true), xl=dv.getUint16(p+30,true), cl=dv.getUint16(p+32,true), lo=dv.getUint32(p+42,true); const name=dec.decode(u.subarray(p+46,p+46+nl)); ent[name]={met,cs,lo}; p+=46+nl+xl+cl; }
+    return {nombres:Object.keys(ent),async leer(name){ const x=ent[name]; if(!x) return null; const lnl=dv.getUint16(x.lo+26,true), lxl=dv.getUint16(x.lo+28,true), st=x.lo+30+lnl+lxl, raw=u.subarray(st,st+x.cs); const data=x.met===0?raw:await inflar(raw); return dec.decode(data); }}; }
+  async function leerLibro(buf){ const z=await abrirZip(buf), P=new DOMParser();
+    const wb=await z.leer("xl/workbook.xml"); if(!wb) throw new Error("FORMATO");
+    const rels=P.parseFromString(await z.leer("xl/_rels/workbook.xml.rels")||"<x/>","application/xml"), rmap={}; [...rels.getElementsByTagName("Relationship")].forEach(r=>rmap[r.getAttribute("Id")]=r.getAttribute("Target"));
+    const wd=P.parseFromString(wb,"application/xml"), hojas=[...wd.getElementsByTagName("sheet")].map(s=>{ const rid=s.getAttribute("r:id")||s.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships","id"); let t=rmap[rid]||""; t=t.replace(/^\/?xl\//,"").replace(/^\//,""); return {nombre:s.getAttribute("name"),ruta:"xl/"+t}; });
+    let ss=null; async function shared(){ if(ss) return ss; ss=[]; const x=await z.leer("xl/sharedStrings.xml"); if(x){ const d=P.parseFromString(x,"application/xml"); [...d.getElementsByTagName("si")].forEach(si=>ss.push([...si.getElementsByTagName("t")].map(t=>t.textContent).join(""))); } return ss; }
+    async function filas(nombre,limits={}){ const hj=hojas.find(x=>x.nombre===nombre); if(!hj) return null; const xml=await z.leer(hj.ruta); if(!xml) return null; const S=await shared();
+      const filtered=Object.keys(limits).length?xml.replace(/<row\b[^>]*>[\s\S]*?<\/row>/g,row=>{
+        const rn=+(row.match(/\br="(\d+)"/)||[])[1];
+        if(limits.maxRow&&rn>limits.maxRow)return '';
+        if(limits.keyPattern&&rn>(limits.headerRows||0)){
+          const cell=(row.match(new RegExp('<c\\b[^>]*\\br="'+(limits.keyCol||'B')+'\\d+"[^>]*>[\\s\\S]*?<\\/c>'))||[])[0]||'';
+          const text=(cell.match(/<v>([\s\S]*?)<\/v>/)||[])[1];
+          const value=/\bt="s"/.test(cell)?S[+text]:/\bt="inlineStr"/.test(cell)?(cell.match(/<t[^>]*>([\s\S]*?)<\/t>/)||[])[1]:text;
+          if(!new RegExp(limits.keyPattern,'i').test(value||''))return '';
+        }
+        return row.replace(/<c\b[^>]*\/>/g,'').replace(/<c\b[^>]*>[\s\S]*?<\/c>/g,cell=>{if(!/<v>|<is>/.test(cell))return '';const ref=(cell.match(/\br="([A-Z]+)\d+"/)||[])[1]||'';let col=0;for(const ch of ref)col=col*26+ch.charCodeAt(0)-64;return limits.maxCol&&col>limits.maxCol?'':cell;});
+      }):xml;
+      const d=P.parseFromString(filtered,"application/xml"), out=[];
+      [...d.getElementsByTagName("row")].forEach(row=>{ const rn=+row.getAttribute("r"), arr=[];
+        [...row.getElementsByTagName("c")].forEach(c=>{ const ref=c.getAttribute("r"), m=/^([A-Z]+)/.exec(ref); let ci=0; for(const ch of m[1]) ci=ci*26+(ch.charCodeAt(0)-64); ci--;
+          const t=c.getAttribute("t"), vEl=c.getElementsByTagName("v")[0]; let v=vEl?vEl.textContent:null;
+          if(t==="s") v=v!=null?S[+v]:null; else if(t==="inlineStr"){ const is=c.getElementsByTagName("t"); v=[...is].map(x=>x.textContent).join(""); } else if(t==="b") v=v==="1"; else if(t==="str"||t==="e") v=t==="e"?null:v; else if(v!=null) v=Number(v);
+          arr[ci]=v; });
+        out[rn-1]=arr; });
+      return out; }
+    return {hojas:hojas.map(x=>x.nombre),filas}; }
+
+  return {LIM,LIM_DEF,fuera,derivar,estado,ESTADOS,calidad,registros,movimientos,lotes,parseNombre,marcaDeNombre,familiaDeNombre,DESC_DEST,serialDeLocal,localDeSerial,libro,leerLibro};
+})();
+
+</script>
