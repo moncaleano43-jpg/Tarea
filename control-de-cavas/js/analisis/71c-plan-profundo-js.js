@@ -18,7 +18,7 @@
   const mesLabel = (k) => `${MES[k % 12]} ${String(Math.floor(k / 12)).slice(2)}`;
   const q = (xs, p) => S.quantile(xs, p);
   const pTxt = (p) => (p == null ? '—' : p < 0.001 ? 'menor que 0,001' : fmt(p, 3));
-  const sec = (t) => `<h2 class="an-sec">${esc(t)}</h2>`;
+  const sec = (t, id) => `<h2 class="an-sec"${id ? ` id="${id}"` : ''}>${esc(t)}</h2>`;
   const vacio = (UI, t, sub, msg) => UI.card(t, sub || '', UI.vacio(msg));
 
   /* ---------- Filas de FV creíbles de TODO el histórico (para cambios y pronóstico) ---------- */
@@ -267,10 +267,11 @@
   }
 
   /* ======================= Registro ======================= */
+  B.fvHist = fvHist; B.rate = rate; B.mesKey = mesKey; B.mesLabel = mesLabel;
   A.PlanExtra = A.PlanExtra || [];
-  A.PlanExtra.push((ctx, UI) => sec('Qué cambió y qué no explica la merma') + cambioMerma(ctx, UI) + noExplica(ctx, UI));
-  A.PlanExtra.push((ctx, UI) => sec('Recuperación, aseos y trasiegos') + recuperacion(ctx, UI) + aseosOperarios(ctx, UI) + trasiegos(ctx, UI));
-  A.PlanExtra.push((ctx, UI) => sec('Proyección y datos que faltan') + proyeccion(ctx, UI) + datosFaltan(ctx, UI));
+  A.PlanExtra.push((ctx, UI) => sec('Qué cambió y qué no explica la merma', 'plan-s-cambio') + cambioMerma(ctx, UI) + noExplica(ctx, UI));
+  A.PlanExtra.push((ctx, UI) => sec('Recuperación, aseos y trasiegos', 'plan-s-rec') + recuperacion(ctx, UI) + aseosOperarios(ctx, UI) + trasiegos(ctx, UI));
+  A.PlanExtra.push((ctx, UI) => sec('Proyección y datos que faltan', 'plan-s-proy') + proyeccion(ctx, UI) + datosFaltan(ctx, UI));
 
   A.PlanPasos = A.PlanPasos || [];
   A.PlanPasos.push((ctx) => {

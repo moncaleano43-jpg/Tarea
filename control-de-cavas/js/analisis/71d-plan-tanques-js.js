@@ -1,0 +1,257 @@
+/* ============================================================
+   71d-plan-tanques.js · Pestaña «Tanques»: cómo va cada fermentador en merma, ocupación y velocidad,
+   y bloque «Merma de este tanque» dentro de la ficha de cada FV.
+   La merma de cada lote se compara con lo esperado para su marca y tamaño de tanque; el semáforo mira los últimos 8 lotes
+   porque un solo lote no dice nada (la variación entre lotes iguales es de ±2 puntos).
+   ============================================================ */
+(function () {
+  'use strict';
+  const A = window.App;
+  if (!A || !A.PlanBase || !A.PlanBase.fvHist || !A.An1 || !A.Analisis || !A.Charts || !A.Stats) return;
+  const An1 = A.An1, S = A.Stats, C = A.Charts, AN = A.Analisis, B = A.PlanBase;
+  const { fmt, esc, iso } = AN;
+  const { vals, sum, mean, med, W, DAY } = An1;
+  const WARN = 'var(--warn,#a26a14)', NEG = 'var(--neg,#b0442e)', POS = 'var(--pos,#3b7a59)', EST = 'var(--est,#5d6f8c)', MUTED = 'var(--muted,#8a8a84)';
+  const r1 = (v) => An1.round(v, 1);
+  const sg = (v, d = 1) => (v == null || !Number.isFinite(v) ? '—' : (v > 0 ? '+' : '') + fmt(v, d));
+  const ST = {
+    rojo: { t: 'Revisar', c: NEG, tono: 'bad' }, ambar: { t: 'Vigilar', c: WARN, tono: 'warn' }, normal: { t: 'En línea', c: POS, tono: 'ok' },
+    bueno: { t: 'Mejor de lo esperado', c: POS, tono: 'ok' }, pocos: { t: 'Pocos datos', c: MUTED, tono: '' },
+  };
+  const vacio = (UI, t, msg) => UI.card(t, '', UI.vacio(msg));
+
+  /* ======================= Motor: una fila por tanque ======================= */
+  function engine(ctx) {
+    return An1.memo(ctx, 'planTq', () => {
+      const hist = B.fvHist(ctx), E = { n: hist.length, T: [], byTq: new Map() };
+      if (hist.length < 40) return E;
+      // Línea base: lo que pasa después del último cambio de nivel de la planta (si lo hubo)
+      const sem = An1.porPeriodo(hist, 'week').filter((p) => p.rows.length >= 3).map((p) => ({ t: p.t, y: B.rate(p.rows) }));
+      let t0 = 0;
+      if (sem.length >= 12) { const cp = S.changePoint(sem.map((s) => s.y)); if (cp && cp.p < 0.05 && Math.abs(cp.delta) >= 0.4) t0 = sem[cp.idx].t; }
+      const base = hist.filter((r) => r.t >= t0), use = base.length >= 150 ? base : hist, g = B.rate(use) / 100;
+      const rBC = new Map(), rC = new Map();
+      ['normal', 'grande'].forEach((c) => { const x = use.filter((r) => r.cls === c); rC.set(c, x.length >= 20 ? B.rate(x) / 100 : g); });
+      new Set(use.map((r) => r.brand + '|' + r.cls)).forEach((k) => { const [b, c] = k.split('|'), x = use.filter((r) => r.brand === b && r.cls === c); rBC.set(k, x.length >= 8 ? B.rate(x) / 100 : rC.get(c)); });
+      const fm = new Map(); An1.sane('ferm', ctx.todas('ferm')).forEach((f) => { if (f.lote) fm.set(String(f.lote), f); });
+      const brands = ctx.estado.brands || [];
+      const lots = hist.filter((r) => !brands.length || brands.includes(r.brand)).map((r) => {
+        const f = fm.get(String(r.lote)), rt = rBC.has(r.brand + '|' + r.cls) ? rBC.get(r.brand + '|' + r.cls) : rC.get(r.cls), esp = r.input * rt;
+        const fill = f && f.t && r.t > f.t && (r.t - f.t) / DAY < 40 ? f.t : null;
+        return { ...r, esp, res: r.loss - esp, resPct: ((r.loss - esp) / r.input) * 100, fill, stay: fill ? (r.t - fill) / DAY : null };
+      });
+      const sd = S.sd(lots.filter((r) => r.t >= t0).map((r) => r.resPct)) || 2;
+      const from = Math.max(ctx.rango.from, lots.length ? lots[0].t : 0), to = ctx.rango.to, wd = Math.max(1, (to - from) / DAY);
+      Object.assign(E, { t0, sd, noise: (sd / 100) * (med(vals(lots, 'input')) || 3800), from, to, wd, lots, brands });
+      // Velocidad de fermentación por tanque (frente a la mediana de su marca)
+      const fr = An1.sane('ferm', ctx.todas('ferm')).filter((f) => f.h75 != null && f.tq != null);
+      const bm = {}; new Set(fr.map((f) => f.brand)).forEach((b) => { bm[b] = med(vals(fr.filter((f) => f.brand === b), 'h75')); });
+      const vel = new Map(); fr.forEach((f) => { if (bm[f.brand] == null) return; if (!vel.has(f.tq)) vel.set(f.tq, []); vel.get(f.tq).push(f.h75 - bm[f.brand]); });
+      E.vel = vel;
+      const porTq = new Map(); lots.forEach((r) => { if (r.tq != null) { if (!porTq.has(r.tq)) porTq.set(r.tq, []); porTq.get(r.tq).push(r); } });
+      porTq.forEach((xs, tq) => {
+        xs.sort((a, b) => a.t - b.t);
+        const last = xs.slice(-8), m8 = mean(last.map((x) => x.resPct)), z = last.length >= 6 ? m8 / (sd / Math.sqrt(last.length)) : null;
+        const st = z == null ? 'pocos' : z >= 3 ? 'rojo' : z >= 2 ? 'ambar' : z <= -2 ? 'bueno' : 'normal';
+        const per = xs.filter((x) => x.t >= from && x.t <= to), iv = xs.filter((x) => x.fill != null && x.t > from && x.fill < to);
+        const occ = (sum(iv.map((x) => Math.max(0, Math.min(x.t, to) - Math.max(x.fill, from)))) / (to - from)) * 100;
+        const gaps = []; for (let i = 1; i < xs.length; i++) { if (xs[i].fill != null && xs[i].fill >= from) { const gp = (xs[i].fill - xs[i - 1].t) / DAY; if (gp >= 0 && gp < 60) gaps.push(gp); } }
+        const v = vel.get(tq) || [], vm = v.length >= 8 ? mean(v) : null, vz = v.length >= 8 && S.sd(v) > 0 ? vm / (S.sd(v) / Math.sqrt(v.length)) : null;
+        const row = {
+          tq, cls: xs[0].cls, n: xs.length, last, m8, z, st, per, nPer: per.length, loss: sum(vals(per, 'loss')), input: sum(vals(per, 'input')), exceso: sum(per.map((x) => x.res)),
+          tasa: per.length ? B.rate(per) : null, occ: iv.length ? occ : null, nOcc: iv.length, gap: gaps.length >= 3 ? med(gaps) : null, stay: med(vals(per, 'stay')) || med(vals(xs.slice(-6), 'stay')),
+          ult: xs[xs.length - 1], vel: vm, velN: v.length, velZ: vz,
+        };
+        E.T.push(row); E.byTq.set(tq, row);
+      });
+      E.T.sort((a, b) => a.tq - b.tq);
+      // Maduración (SV): ocupación a partir del trasiego que la llena y el cierre del lote
+      try {
+        const tr = An1.sane('trasiego', ctx.todas('trasiego')).filter((r) => r.kind === 'Trasiego' && r.actualEnd && Number.isFinite(+r.destination));
+        const byDest = new Map(); tr.forEach((r) => { const d = +r.destination; if (!byDest.has(d)) byDest.set(d, []); byDest.get(d).push(r.actualEnd); });
+        byDest.forEach((v) => v.sort((a, b) => a - b));
+        const svs = An1.sane('merma', ctx.todas('merma')).filter((r) => r.phase === 'SV' && r.input > 0 && r.tq != null), ocup = new Map(), stays = [];
+        svs.forEach((r) => {
+          const ds = byDest.get(+r.tq); if (!ds) return; let fi = null;
+          for (let i = ds.length - 1; i >= 0; i--) if (ds[i] < r.t) { fi = ds[i]; break; }
+          if (fi == null || r.t - fi > 40 * DAY) return;
+          stays.push((r.t - fi) / DAY);
+          const ov = Math.max(0, Math.min(r.t, to) - Math.max(fi, from)); ocup.set(r.tq, (ocup.get(r.tq) || 0) + ov);
+        });
+        const lv = [...ocup.values()].map((v) => (v / (to - from)) * 100);
+        E.sv = { n: stays.length, stay: med(stays), occ: lv.length ? mean(lv) : null, tanques: ocup.size };
+      } catch (e) { E.sv = null; }
+      return E;
+    });
+  }
+
+  /* ======================= Gráfica pequeña por tanque ======================= */
+  function spark(xs, w, h) {
+    if (!xs || xs.length < 2) return '';
+    const vs = xs.map((x) => x.lossPct), es = xs.map((x) => (x.esp / x.input) * 100), all = vs.concat(es);
+    let lo = Math.min(0, ...all), hi = Math.max(...all); if (hi - lo < 2) hi = lo + 2;
+    const px = (i) => 5 + (i * (w - 10)) / (vs.length - 1), py = (v) => h - 5 - ((v - lo) / (hi - lo)) * (h - 10);
+    const path = (a) => a.map((v, i) => (i ? 'L' : 'M') + px(i).toFixed(1) + ' ' + py(v).toFixed(1)).join('');
+    const dots = vs.map((v, i) => `<circle class="tq-pt" cx="${px(i).toFixed(1)}" cy="${py(v).toFixed(1)}" r="${i === vs.length - 1 ? 3.4 : 1.8}"><title>${esc(xs[i].lote)} · ${esc(AN.fmtDate(xs[i].t))}: ${fmt(v, 1)} % (esperado ${fmt(es[i], 1)} %)</title></circle>`).join('');
+    return `<svg class="tq-spark" viewBox="0 0 ${w} ${h}" role="img" aria-label="Merma de los últimos ${vs.length} lotes frente a lo esperado"><line class="tq-zero" x1="0" x2="${w}" y1="${py(0).toFixed(1)}" y2="${py(0).toFixed(1)}"/><path class="tq-exp" d="${path(es)}"/><path class="tq-line" d="${path(vs)}"/>${dots}</svg>`;
+  }
+
+    /* Estancia real frente al «Tiempo máx en FV» de la hoja de especificaciones */
+  function estanciaSpec(E) {
+    const limDe = (b) => { try { const sp = A.Hist2 && A.Hist2.spec && A.Hist2.spec(b); return sp && sp.tmax && sp.tmax.sup != null ? sp.tmax.sup : null; } catch (e) { return null; } };
+    const inP = E.lots.filter((r) => r.stay != null && r.t >= E.from && r.t <= E.to);
+    const marcas = [...new Set(inP.map((r) => r.brand))].map((b) => {
+      const x = inP.filter((r) => r.brand === b), lim = limDe(b); if (x.length < 8 || lim == null) return null;
+      const h = x.map((r) => r.stay * 24), ex = h.map((v) => Math.max(0, v - lim));
+      return { b, n: x.length, med: med(h), lim, sobre: (h.filter((v) => v > lim).length / h.length) * 100, ex: med(ex), dias: sum(ex) / 24 };
+    }).filter(Boolean);
+    const core = E.T.filter((t) => t.occ != null && t.occ >= 50 && t.nOcc >= 3);
+    const dias = sum(marcas.map((m) => m.dias)), mes = dias / (E.wd / 30), stayD = med(core.map((t) => t.stay).filter((v) => v != null)), gapD = med(core.map((t) => t.gap).filter((v) => v != null)) || 0;
+    const lotes = stayD ? mes / (stayD + gapD) : null, medIn = med(vals(E.lots, 'input')) || 3800;
+    return { marcas, dias, mes, lotes, medIn, todas: marcas.length >= 2 && marcas.every((m) => m.sobre > 50) };
+  }
+
+/* ======================= Tarjetas ======================= */
+  function tarjeta(t, E) {
+    const s = ST[t.st];
+    const ult = t.ult;
+    return `<article class="tq-card st-${t.st}" data-st="${t.st}" data-tq="${t.tq}">
+      <header><span class="tq-dot" style="background:${s.c}"></span><b>TQ ${t.tq}</b>${t.cls === 'grande' ? '<i>grande</i>' : ''}<span class="tq-st" style="color:${s.c}">${s.t}</span></header>
+      <div class="tq-big"><strong>${t.tasa != null ? fmt(t.tasa, 1) + ' %' : '—'}</strong><span>${t.nPer ? `merma del periodo · ${t.nPer} lote${t.nPer === 1 ? '' : 's'}` : 'sin lotes en el periodo'}</span></div>
+      <div class="tq-ex ${t.exceso > 0 ? 'mal' : 'bien'}">${t.nPer ? `${sg(t.exceso, 0)} Hl frente a lo esperado` : '&nbsp;'}</div>
+      ${spark(t.last, 200, 46)}
+      <dl><div><dt>Últimos ${t.last.length}</dt><dd>${t.z == null ? '—' : sg(t.m8, 1) + ' pp'}</dd></div><div><dt>Ocupación</dt><dd>${t.occ != null ? fmt(t.occ, 0) + ' %' : '—'}</dd></div><div><dt>Estancia</dt><dd>${t.stay != null ? fmt(t.stay, 1) + ' d' : '—'}</dd></div><div><dt>Velocidad</dt><dd>${t.vel != null ? sg(t.vel, 1) + ' h' : '—'}</dd></div></dl>
+      <footer>Último: ${esc(ult.lote)} · ${esc(ult.brand)} · ${esc(AN.fmtDate(ult.t))} · ${fmt(ult.lossPct, 1)} %</footer></article>`;
+  }
+
+  function renderTanques(ctx, UI) {
+    const E = engine(ctx);
+    if (!E.T.length) return vacio(UI, 'Tanques', 'Se necesitan al menos 40 lotes de fermentación con merma calculada.');
+    const aten = E.T.filter((t) => t.st === 'ambar' || t.st === 'rojo'), rojos = E.T.filter((t) => t.st === 'rojo'), bien = E.T.filter((t) => t.st === 'bueno');
+    const per = E.T.flatMap((t) => t.per), tasa = per.length ? B.rate(per) : null;
+    const core = E.T.filter((t) => t.occ != null && t.occ >= 50 && t.nOcc >= 3), bajo = E.T.filter((t) => t.occ != null && t.occ < 30 && t.nOcc >= 1);
+    const out = [];
+    out.push(An1.stats([
+      An1.stat('Merma FV del periodo', tasa != null ? `${fmt(tasa, 2)} %` : '—', `${fmt(sum(vals(per, 'loss')), 0)} Hl en ${fmt(per.length, 0)} lotes`),
+      An1.stat('Tanques por vigilar o revisar', `${fmt(aten.length, 0)} de ${fmt(E.T.length, 0)}`, `${rojos.length} para revisar · por azar se esperan ${fmt(E.T.length * 0.05, 0)} a ${fmt(E.T.length * 0.1, 0)}`, rojos.length ? 'bad' : aten.length > E.T.length * 0.1 ? 'warn' : 'ok'),
+      An1.stat('Ocupación del núcleo de FV', core.length ? `${fmt(mean(core.map((t) => t.occ)), 0)} %` : '—', core.length ? `${core.length} tanques con uso normal · ${bajo.length} de uso bajo` : 'sin datos de llenado'),
+      An1.stat('Variación entre lotes iguales', `± ${fmt(E.noise, 0)} Hl`, 'por eso el semáforo mira 8 lotes y no uno'),
+    ]));
+    out.push(UI.lectura(`Cada tarjeta compara la merma real de los lotes de ese tanque con lo que se esperaría por su marca y su tamaño. <b>El semáforo no se activa por un lote malo</b>: mira los últimos 8 lotes y solo avisa si el promedio está claramente por encima de lo esperado (Vigilar ≥ 2 errores estándar, Revisar ≥ 3). La línea oscura es la merma de cada lote, la discontinua lo esperado, y los puntos tienen el detalle al pasar el cursor. ${E.t0 ? `Lo «esperado» se calcula con los lotes posteriores al cambio de nivel del ${esc(AN.fmtDate(E.t0))}.` : ''}`));
+    // Filtro
+    out.push(`<div class="tq-tools"><div class="an-seg" role="group" aria-label="Filtrar tanques"><button type="button" data-tqf="all" aria-pressed="true">Todos (${E.T.length})</button><button type="button" data-tqf="atencion" aria-pressed="false">Requieren atención (${aten.length})</button><button type="button" data-tqf="bueno" aria-pressed="false">Mejor de lo esperado (${bien.length})</button></div></div>`);
+    out.push(`<div class="tq-grid" id="tqGrid">${E.T.map((t) => tarjeta(t, E)).join('')}</div>`);
+
+    // Mapa de calor tanque x mes
+    out.push((() => {
+      const ms = [...new Set(E.lots.map((r) => B.mesKey(r.t)))].sort((a, b) => a - b).slice(-8);
+      const rows = E.T.filter((t) => t.n >= 6), M = rows.map((t) => ms.map((k) => { const x = t.last.length ? E.lots.filter((r) => r.tq === t.tq && B.mesKey(r.t) === k) : []; return x.length >= 2 ? r1(mean(x.map((r) => r.resPct))) : null; }));
+      if (rows.length < 4 || ms.length < 3) return '';
+      const peor = rows.map((t, i) => ({ t, n: M[i].filter((v) => v != null && v > 1).length })).filter((x) => x.n >= 3).sort((a, b) => b.n - a.n);
+      const l = `Cada celda es cuántos puntos de merma tuvo ese tanque en ese mes por encima (+) o por debajo (−) de lo esperado para sus marcas. Un tanque que sale oscuro (más merma de la esperada) mes tras mes es un problema real; una celda oscura aislada es ruido. ` +
+        (peor.length ? `Tanques con 3 o más meses por encima de lo esperado en más de 1 punto: <b>${peor.slice(0, 5).map((x) => 'TQ ' + x.t.tq).join(', ')}</b>. <b>Qué hacer:</b> inspeccionarlos primero.` : 'Ningún tanque se repite por encima de lo esperado tres meses o más: las diferencias son ruido, no un tanque defectuoso.');
+      return An1.tarjeta(UI, 'Tanque por mes', 'Merma frente a lo esperado (puntos de %). Celdas con al menos 2 lotes.',
+        C.heatmap({ w: W.full, rows: rows.map((t) => 'TQ ' + t.tq), cols: ms.map(B.mesLabel), matrix: M, domain: [-3, 3], fmt: (v) => sg(v, 1), toolbar: true, id: 'ch-tq-heat' }), l, { tono: peor.length ? 'warn' : '' });
+    })());
+
+    // Estancia real frente a la hoja de especificaciones
+    out.push((() => {
+      const X = estanciaSpec(E), { marcas, dias, mes, lotes, medIn, todas } = X;
+      if (marcas.length < 2) return '';
+      const tr = An1.sane('trasiego', ctx.rows('trasiego')).filter((r) => r.kind === 'Trasiego' && r.delay != null && r.delay > -24 && r.delay < 72), dl = tr.length >= 20 ? med(vals(tr, 'delay')) : null;
+      const l = `Cada barra compara la estancia mediana de los lotes en el fermentador con el «Tiempo máx en FV» de la hoja ESPECIFICACIONES MARCA. ` +
+        (todas ? `<b>En todas las marcas la mayoría de los lotes (${fmt(Math.min(...marcas.map((m) => m.sobre)), 0)} a ${fmt(Math.max(...marcas.map((m) => m.sobre)), 0)} %) pasa más tiempo del permitido</b>, con un exceso mediano de ${fmt(Math.min(...marcas.map((m) => m.ex)), 0)} a ${fmt(Math.max(...marcas.map((m) => m.ex)), 0)} h. ` : `Marcas por encima del límite: ${marcas.filter((m) => m.sobre > 50).map((m) => esc(m.b)).join(', ') || 'ninguna'}. `) +
+        `En el periodo suman <b>${fmt(dias, 0)} días-tanque</b> de más, unos ${fmt(mes, 0)} al mes${lotes ? `, que equivalen a <b>${fmt(lotes, 1)} lotes al mes (≈ ${fmt(lotes * medIn, 0)} Hl)</b> que el núcleo de fermentadores no puede llenar, si hubiera mosto para ellos` : ''}. ` +
+        (dl != null ? `No parece espera de trasiego (mediana de retraso: ${fmt(dl, 1)} h): ` : '') + `coincide con que la fermentación tarda más de lo que pide la hoja (ver «Proceso y levadura»). ` +
+        `<b>Qué hacer:</b> (1) confirmar con producción si el límite de la hoja sigue vigente; (2) si lo está, revisar la temperatura de fermentación, que hoy no se registra y es una causa posible; (3) si no lo está, actualizar la hoja para que los semáforos reflejen la realidad.`;
+      return An1.tarjeta(UI, 'Estancia en fermentador frente a la especificación', `Horas entre el llenado y el cierre del lote, por marca (${AN.fmtDate(E.from)} – ${AN.fmtDate(E.to)}).`,
+        C.bars({ w: W.full, h: 280, unit: 'h', toolbar: true, id: 'ch-tq-estancia', categories: marcas.map((m) => `${m.b} (${m.n})`), series: [{ name: 'Estancia mediana', values: marcas.map((m) => Math.round(m.med)), color: WARN }, { name: 'Límite de la hoja', values: marcas.map((m) => m.lim), color: EST }] }), l, { tono: todas ? 'bad' : 'warn' });
+    })());
+
+    // Ocupación y velocidad, lado a lado
+    const cardOcup = (() => {
+      const oc = E.T.filter((t) => t.occ != null).sort((a, b) => b.occ - a.occ);
+      if (oc.length < 4) return '';
+      const stay = med(core.map((t) => t.stay).filter((v) => v != null)), gap = med(core.map((t) => t.gap).filter((v) => v != null));
+      const nC = core.length, ciclo = stay != null ? stay + (gap || 0) : null, lotesMes = ciclo ? (nC * 30) / ciclo : null;
+      const dia = ciclo ? (nC * 30) / (ciclo - 1) - lotesMes : null, medio = ciclo && gap ? (nC * 30) / (ciclo - 0.3) - lotesMes : null, medIn = med(vals(E.lots, 'input')) || 3800;
+      const chart = C.barsH({ w: W.half, h: Math.max(260, oc.length * 24 + 50), unit: '%', toolbar: true, id: 'ch-tq-ocup', data: oc.map((t) => ({ label: `TQ ${t.tq} (${t.nOcc} lotes)`, value: r1(t.occ), color: t.occ >= 85 ? WARN : t.occ < 30 ? MUTED : EST })) });
+      const sv = E.sv && E.sv.occ != null ? E.sv : null;
+      const l = `Qué parte del periodo estuvo cada FV ocupado, del llenado al cierre del lote. El núcleo de ${nC} tanques trabaja al <b>${fmt(mean(core.map((t) => t.occ)), 0)} %</b>, con una estancia mediana de ${stay != null ? fmt(stay, 1) : '—'} d y solo ${gap != null ? fmt(gap, 1) : '—'} d entre un lote y el siguiente. ` +
+        (sv ? `La maduración (SV) está a <b>${fmt(sv.occ, 0)} %</b> con ${fmt(sv.stay, 1)} d de estancia: <b>el cuello de botella es la fermentación, no la maduración</b>. ` : '') +
+        (lotesMes ? `Capacidad actual del núcleo: unos ${fmt(lotesMes, 0)} lotes al mes. <b>Cada día menos de estancia en FV liberaría ${fmt(dia, 1)} lotes al mes (≈ ${fmt(dia * medIn, 0)} Hl)</b>, siempre que haya mosto y demanda para llenarlos; acortar 0,3 d entre lotes, ${fmt(medio, 1)} lotes. ` : '') +
+        (bajo.length ? `${bajo.length} tanques casi no se usan (${bajo.slice(0, 8).map((t) => t.tq).join(', ')}): confirmar si están reservados para otro uso o si son capacidad ociosa. ` : '') +
+        `<b>Qué hacer:</b> revisar qué parte de la estancia es maduración necesaria y cuál es espera (frío, disponibilidad de SV, trasiego); con los datos de hoy no se puede separar, porque no se registra cuándo termina realmente la fermentación activa.`;
+      return An1.tarjeta(UI, 'Ocupación de los fermentadores', `% del tiempo ocupado en el periodo (${AN.fmtDate(E.from)} – ${AN.fmtDate(E.to)}).`, chart, l, { tono: 'warn' });
+    })();
+
+    const cardVel = (() => {
+      const v = E.T.filter((t) => t.vel != null).sort((a, b) => a.vel - b.vel);
+      if (v.length < 6) return '';
+      const G = [].concat(...v.filter((t) => t.cls === 'grande').map((t) => E.vel.get(t.tq))), N = [].concat(...v.filter((t) => t.cls === 'normal').map((t) => E.vel.get(t.tq)));
+      const tt = G.length > 5 && N.length > 5 ? S.ttest(G, N) : null;
+      const lentos = v.filter((t) => t.velZ > 2.5 && t.vel > 2), rapidos = v.filter((t) => t.velZ < -2.5 && t.vel < -2);
+      const l = `Horas hasta 75 % de atenuación de cada tanque frente a la mediana de la marca que contiene (− = fermenta más rápido). ` +
+        (tt && tt.p < 0.05 ? `Los <b>tanques grandes fermentan ${fmt(Math.abs(mean(G) - mean(N)), 1)} h ${mean(G) < mean(N) ? 'más rápido' : 'más lento'}</b> que los normales (p ${tt.p < 0.001 ? 'menor que 0,001' : '= ' + fmt(tt.p, 3)}). ` : '') +
+        (lentos.length ? `Más lentos con evidencia fuerte: <b>${lentos.map((t) => 'TQ ' + t.tq + ' (+' + fmt(t.vel, 1) + ' h)').join(', ')}</b>. <b>Qué hacer:</b> revisar control de temperatura (glicol, sensor) en esos tanques, porque una fermentación más lenta ocupa el tanque más tiempo. ` : '') +
+        (rapidos.length ? `Más rápidos: ${rapidos.slice(0, 4).map((t) => 'TQ ' + t.tq).join(', ')}. Conviene entender qué hacen distinto para replicarlo.` : '');
+      return An1.tarjeta(UI, 'Velocidad de fermentación por tanque', 'Diferencia de horas hasta 75 % frente a la mediana de su marca. * = diferencia real.',
+        C.barsH({ w: W.half, h: Math.max(260, v.length * 24 + 50), unit: 'h', toolbar: true, id: 'ch-tq-vel', data: v.map((t) => ({ label: `${t.velZ > 2.5 || t.velZ < -2.5 ? '* ' : ''}TQ ${t.tq}${t.cls === 'grande' ? ' (grande)' : ''}`, value: r1(t.vel), color: t.velZ > 2.5 ? WARN : t.velZ < -2.5 ? POS : MUTED })), refs: [{ y: 0, label: '', dashed: false }] }), l, { tono: lentos.length ? 'warn' : '' });
+    })();
+    out.push(UI.grid([cardOcup, cardVel].filter(Boolean), 2));
+
+    // Tabla
+    out.push(UI.card('Todos los tanques en una tabla', 'Para ordenar, filtrar y descargar.',
+      UI.tabla([{ k: 'tq', t: 'Tanque', num: true }, { k: 'cls', t: 'Tipo' }, { k: 'estado', t: 'Estado', f: (v, r) => UI.badge(v, ST[r.st].tono) }, An1.colNum('nPer', 'Lotes del periodo', 0), An1.colNum('tasa', 'Merma (%)', 2), An1.colNum('exceso', 'Hl vs esperado', 0), An1.colNum('m8', 'Últimos 8 (pp)', 2), An1.colNum('occ', 'Ocupación (%)', 0), An1.colNum('stay', 'Estancia (d)', 1), An1.colNum('vel', 'Velocidad (h)', 1)],
+        E.T.map((t) => ({ tq: t.tq, cls: t.cls, st: t.st, estado: ST[t.st].t, nPer: t.nPer, tasa: t.tasa == null ? null : An1.round(t.tasa, 2), exceso: An1.round(t.exceso, 0), m8: t.z == null ? null : An1.round(t.m8, 2), occ: t.occ == null ? null : An1.round(t.occ, 0), stay: t.stay == null ? null : An1.round(t.stay, 1), vel: t.vel == null ? null : An1.round(t.vel, 1) })), { id: 'tb-tq-todos', nombre: 'tanques-fv', sort: { k: 'tq', dir: 1 }, max: 40 })));
+    return out.join('');
+  }
+
+  function montar(ctx, el) {
+    const botones = el.querySelectorAll('[data-tqf]'), tarjetas = el.querySelectorAll('.tq-card');
+    botones.forEach((b) => { b.onclick = () => { const f = b.dataset.tqf; botones.forEach((x) => x.setAttribute('aria-pressed', String(x === b))); tarjetas.forEach((c) => { const s = c.dataset.st; c.hidden = f === 'atencion' ? !(s === 'ambar' || s === 'rojo') : f === 'bueno' ? s !== 'bueno' : false; }); }; });
+  }
+
+  AN.registrar({
+    id: 'tanques', label: 'Tanques', orden: 1.6, render: renderTanques, mount: montar,
+    hallazgos(ctx) {
+      const E = engine(ctx), out = [];
+      E.T.filter((t) => t.st === 'rojo').forEach((t) => out.push({ sev: 'alta', titulo: `TQ ${t.tq}: merma por encima de lo esperado`, detalle: `Los últimos ${t.last.length} lotes perdieron ${fmt(t.m8, 1)} puntos más de lo esperado (≥ 3 errores estándar). Ver «Tanques».` }));
+      return out;
+    },
+  });
+  A.PlanPasos = A.PlanPasos || [];
+  A.PlanPasos.push((ctx) => engine(ctx).T.filter((t) => t.st === 'rojo').slice(0, 3).map((t) => ({ t: `Inspeccionar TQ ${t.tq}`, d: `Sus últimos ${t.last.length} lotes perdieron ${fmt(t.m8, 1)} puntos más de lo esperado por marca y tamaño; es un patrón, no un lote suelto.`, tag: 'Merma' })));
+  A.PlanPasos.push((ctx) => {
+    const E = engine(ctx); if (!E.T.length) return [];
+    const X = estanciaSpec(E);
+    return X.todas && X.lotes ? [{ t: 'Cerrar la brecha de tiempo en el fermentador', d: `${fmt(Math.min(...X.marcas.map((m) => m.sobre)), 0)} a ${fmt(Math.max(...X.marcas.map((m) => m.sobre)), 0)} % de los lotes pasa más tiempo del permitido en FV; son unos ${fmt(X.lotes, 1)} lotes al mes (≈ ${fmt(X.lotes * X.medIn, 0)} Hl) de capacidad. Confirmar si el límite sigue vigente y revisar la temperatura de fermentación.`, tag: 'Proceso' }] : [];
+  });
+  A.PlanBase.tanqueEngine = engine;
+
+  /* ======================= Bloque dentro de la ficha de cada FV ======================= */
+  function bloque(tq) {
+    const ctx = AN.contexto(), E = engine(ctx), t = E.byTq.get(+tq);
+    if (!t || !t.last.length) return '';
+    const s = ST[t.st];
+    const texto = t.z == null ? `Hay solo ${t.n} lotes con merma en este tanque; todavía no alcanzan para valorar su comportamiento.` :
+      t.st === 'rojo' ? `Los últimos ${t.last.length} lotes perdieron en promedio <b>${fmt(t.m8, 1)} puntos más</b> de lo esperado por su marca y tamaño. Es un patrón y no un lote suelto (${fmt(t.z, 1)} errores estándar). Conviene revisar válvulas, nivel y mangueras de trasiego.` : t.st === 'ambar' ? `Los últimos ${t.last.length} lotes perdieron en promedio <b>${fmt(t.m8, 1)} puntos más</b> de lo esperado (${fmt(t.z, 1)} errores estándar). <b>Puede ser un patrón o casualidad</b>: con ${E.T.length} tanques es normal que uno o dos aparezcan así. Se confirma o se descarta con los próximos lotes.` :
+        t.st === 'bueno' ? `Los últimos ${t.last.length} lotes perdieron ${fmt(Math.abs(t.m8), 1)} puntos menos de lo esperado: este tanque va mejor que el resto.` : `Los últimos ${t.last.length} lotes van en línea con lo esperado (${sg(t.m8, 1)} puntos). Un lote suelto se desvía ±${fmt(E.noise, 0)} Hl sin que signifique nada.`;
+    return `<section class="fv-detail-section tq-block" aria-label="Merma de este tanque"><h2>Merma de este tanque</h2>
+      <div class="tq-block-g"><div><div class="tq-block-h"><span class="tq-dot" style="background:${s.c}"></span><b style="color:${s.c}">${s.t}</b>${t.cls === 'grande' ? '<i>tanque grande</i>' : ''}</div>
+      <p class="fv-helper">${texto}</p>
+      <dl class="tq-block-d"><div><dt>Merma del periodo</dt><dd>${t.tasa != null ? fmt(t.tasa, 1) + ' %' : '—'}</dd></div><div><dt>Frente a lo esperado</dt><dd>${t.nPer ? sg(t.exceso, 0) + ' Hl' : '—'}</dd></div><div><dt>Ocupación</dt><dd>${t.occ != null ? fmt(t.occ, 0) + ' %' : '—'}</dd></div><div><dt>Estancia</dt><dd>${t.stay != null ? fmt(t.stay, 1) + ' d' : '—'}</dd></div></dl>
+      <a class="an-link" href="#/analisis/tanques">Ver todos los tanques →</a></div>
+      <div>${spark(E.lots.filter((x) => x.tq === t.tq).slice(-12), 320, 90)}<p class="tq-note">Últimos ${Math.min(12, t.n)} lotes: línea oscura = merma real, discontinua = esperada.</p></div></div></section>`;
+  }
+  const prev = A.V && A.V.fv;
+  if (prev) {
+    A.V.fv = Object.assign({}, prev, {
+      render(action, tq) {
+        const html = prev.render(action, tq);
+        if (action !== 'detalle' || typeof html !== 'string') return html;
+        try { const b = bloque(tq); if (!b) return html; const at = html.indexOf('<section class="fv-detail-section"><h2>Alta de fermentación'); return at >= 0 ? html.slice(0, at) + b + html.slice(at) : html + b; } catch (e) { if (window.console) console.error('[Tanques] ficha', e); return html; }
+      },
+    });
+  }
+})();

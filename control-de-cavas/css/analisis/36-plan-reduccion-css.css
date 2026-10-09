@@ -8,3 +8,39 @@
 .an-plan-n{counter-reset:pn}
 .an-plan-n li{grid-template-columns:auto 1fr;counter-increment:pn}
 .an-plan-n li::before{content:counter(pn);font:600 12px var(--sans);width:22px;height:22px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center}
+
+/* Pestaña «Tanques» */
+.tq-tools{margin:6px 0 12px}
+.tq-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(236px,1fr));gap:12px;margin-bottom:18px}
+.tq-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 14px 11px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.tq-card[hidden]{display:none}
+.tq-card.st-rojo{border-color:var(--neg,#b0442e);box-shadow:0 0 0 1px var(--neg,#b0442e) inset}
+.tq-card.st-ambar{border-color:var(--warn,#a26a14)}
+.tq-card header{display:flex;align-items:center;gap:7px;font-size:14px}
+.tq-card header i{font-style:normal;font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 7px}
+.tq-card .tq-st{margin-left:auto;font:600 11px var(--sans);letter-spacing:.02em}
+.tq-dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+.tq-big strong{font-size:24px;letter-spacing:-.02em;color:var(--ink)}
+.tq-big span{display:block;font-size:12px;color:var(--muted)}
+.tq-ex{font-size:12.5px;font-weight:550;min-height:16px}
+.tq-ex.mal{color:var(--neg,#b0442e)}.tq-ex.bien{color:var(--pos,#3b7a59)}
+.tq-spark{width:100%;height:auto;display:block;overflow:visible}
+.tq-spark .tq-zero{stroke:var(--line);stroke-width:1}
+.tq-spark .tq-exp{fill:none;stroke:var(--muted);stroke-width:1.4;stroke-dasharray:3 3;opacity:.8}
+.tq-spark .tq-line{fill:none;stroke:var(--ink);stroke-width:1.8;stroke-linejoin:round}
+.tq-spark .tq-pt{fill:var(--ink)}
+.tq-card dl{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:2px 0 0}
+.tq-card dl div{min-width:0}
+.tq-card dt{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tq-card dd{margin:0;font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap}
+.tq-card footer{font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:6px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Bloque en la ficha de cada FV */
+.tq-block-g{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:center}
+@media (max-width:760px){.tq-block-g{grid-template-columns:1fr}}
+.tq-block-h{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.tq-block-h i{font-style:normal;font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 8px}
+.tq-block-d{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
+.tq-block-d dt{font-size:11px;color:var(--muted)}.tq-block-d dd{margin:0;font-weight:650}
+.tq-note{font-size:11.5px;color:var(--muted);margin:4px 0 0}
+.an-lead-s{margin:0 2px 12px;color:var(--ink-2);font-size:14px;line-height:1.5}
+.an-plan-nav{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 6px}

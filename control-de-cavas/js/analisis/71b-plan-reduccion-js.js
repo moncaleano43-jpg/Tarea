@@ -319,12 +319,14 @@
     const pasos = planResumen(ctx);
     const cab = pasos.length ? `<section class="an-card an-plan"><header class="an-card-h"><div><h3>Qué haría, en este orden</h3><p>Se recalcula con el periodo y la marca elegidos arriba.</p></div></header><div class="an-card-b"><ol class="an-plan-l">${pasos.map((p) => `<li><span class="an-plan-tag ${p.tag === 'Agua' ? 'agua' : ''}">${esc(p.tag)}</span><div><b>${esc(p.t)}</b><p>${esc(p.d)}</p></div></li>`).join('')}</ol></div></section>` : '';
     const extra = (A.PlanExtra || []).map((f) => { try { return f(ctx, UI) || ''; } catch (e) { if (window.console) console.error('[Plan]', e); return ''; } }).join('');
-    return `${cab}<h2 class="an-sec">Merma · fermentación</h2>${renderMerma(ctx, UI)}<h2 class="an-sec">Agua</h2>${renderAgua(ctx, UI)}${extra}`;
+    const nav = `<nav class="an-plan-nav" aria-label="Ir a una sección">${[['plan-s-merma', 'Merma'], ['plan-s-agua', 'Agua'], ['plan-s-cambio', 'Qué cambió'], ['plan-s-rec', 'Recuperación, aseos y trasiegos'], ['plan-s-proy', 'Proyección y datos que faltan']].map(([id, t]) => `<button type="button" class="an-chip" data-go="${id}">${t}</button>`).join('')}</nav>`;
+    return `${cab}${nav}<h2 class="an-sec" id="plan-s-merma">Merma · fermentación</h2>${renderMerma(ctx, UI)}<h2 class="an-sec" id="plan-s-agua">Agua</h2>${renderAgua(ctx, UI)}${extra}`;
   }
 
   A.PlanBase = { mermaPlan, aguaPlan, capit, pl };
   AN.registrar({
     id: 'plan', label: 'Dónde actuar', orden: 1.5, render: renderPlan,
+    mount(ctx, el) { el.querySelectorAll('[data-go]').forEach((b) => { b.onclick = () => { const t = document.getElementById(b.dataset.go); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }; }); },
     hallazgos(ctx) {
       const out = [], M = mermaPlan(ctx);
       if (M.pctSinExp > 60) out.push({ sev: 'media', titulo: `${fmt(M.pctSinExp, 0)} % de la merma de fermentación no tiene explicación registrada`, detalle: `${fmt(M.sinExp, 0)} Hl no aparecen en ninguna purga. Ver «Dónde actuar».` });
