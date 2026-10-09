@@ -1,0 +1,225 @@
+
+/* ============================================================
+   captura.js — importar muestras con PaddleOCR.js (local/gratis)
+   ============================================================ */
+(function(){
+  const {esc,f,fmtS,num,toIn,toast,clone} = App.U;
+
+  let ocrPromise=null;
+
+  // PaddleOCR.js es un SDK oficial para ejecutar PP-OCR directamente
+  // en el navegador. No requiere API key ni envía la imagen a un servicio OCR.
+  async function cargarOCR(){
+    if(ocrPromise) return ocrPromise;
+    ocrPromise=(async()=>{
+      let mod;
+      let lastErr=null;
+      const urls=[
+        "https://esm.sh/@paddleocr/paddleocr-js@0.4.2",
+        "https://cdn.jsdelivr.net/npm/@paddleocr/paddleocr-js@0.4.2/+esm"
+      ];
+      for(const url of urls){
+        try{ mod=await import(url); if(mod&&mod.PaddleOCR) break; }
+        catch(e){ lastErr=e; }
+      }
+      if(!mod||!mod.PaddleOCR) throw new Error("No se pudo cargar PaddleOCR.js. Comprueba que Safari tenga conexión a Internet.");
+      const PaddleOCR=mod.PaddleOCR;
+      return await PaddleOCR.create({
+        lang:"en",
+        ocrVersion:"PP-OCRv5",
+        textDetectionBatchSize:1,
+        textRecognitionBatchSize:6,
+        ortOptions:{
+          backend:"wasm",
+          wasmPaths:"https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/",
+          numThreads:2,
+          simd:true
+        }
+      });
+    })().catch(e=>{ ocrPromise=null; throw e; });
+    return ocrPromise;
+  }
+
+  const clean=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim();
+  const center=poly=>{
+    if(!Array.isArray(poly)||!poly.length) return {x:0,y:0,w:0,h:0};
+    const xs=poly.map(p=>Array.isArray(p)?p[0]:0), ys=poly.map(p=>Array.isArray(p)?p[1]:0);
+    const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
+    return {x:(minX+maxX)/2,y:(minY+maxY)/2,w:maxX-minX,h:maxY-minY};
+  };
+
+  function itemText(x){ return String(x?.text||"").replace(/\s+/g," ").trim(); }
+
+  function parseDateTime(text,year){
+    const s=String(text||"").replace(/O/g,"0").replace(/[|]/g,"1");
+    const dm=s.match(/(?:^|\D)(\d{1,2})\s*[-\/.]\s*(\d{1,2})(?:\D|$)/);
+    const hm=s.match(/(?:^|\D)(\d{1,2})\s*[:.]\s*(\d{2})(?:\D|$)/);
+    if(!dm||!hm) return null;
+    const mo=+dm[1], day=+dm[2], h=+hm[1], mi=+hm[2];
+    if(mo<1||mo>12||day<1||day>31||h>23||mi>59) return null;
+    const d=new Date(year,mo-1,day,h,mi,0,0);
+    return isNaN(d.getTime())?null:d;
+  }
+
+  function decimalCandidates(text){
+    const s=String(text||"").replace(/O/g,"0").replace(/[|]/g,"1");
+    const out=[];
+    const re=/(?<!\d)(\d{1,2})\s*[,\.]\s*(\d{1,2})(?!\d)/g;
+    let m;
+    while((m=re.exec(s))){
+      const v=Number(m[1]+"."+m[2]);
+      if(v>=0&&v<=40) out.push(v);
+    }
+    return out;
+  }
+
+  function agruparFilas(items){
+    const arr=items.map((it,i)=>({
+      i,text:itemText(it),p:center(it.poly),score:Number(it.score||0)
+    })).filter(x=>x.text&&x.p.w>=0);
+    arr.sort((a,b)=>a.p.y-b.p.y||a.p.x-b.p.x);
+    const rows=[];
+    for(const it of arr){
+      let row=rows.find(r=>Math.abs(r.y-it.p.y)<=Math.max(12,Math.min(28,(r.h+it.p.h)/2+8)));
+      if(!row){ row={y:it.p.y,h:it.p.h,items:[]}; rows.push(row); }
+      row.items.push(it); row.h=Math.max(row.h,it.p.h);
+    }
+    rows.forEach(r=>r.items.sort((a,b)=>a.p.x-b.p.x));
+    return rows.sort((a,b)=>a.y-b.y);
+  }
+
+  function parsearTabla(result,r){
+    const items=Array.isArray(result?.items)?result.items:[];
+    if(!items.length) return [];
+    const year=r.fin?r.fin.getFullYear():new Date().getFullYear();
+    const rows=agruparFilas(items);
+
+    // Ubicación de la columna Valor, si PaddleOCR logró leer el encabezado.
+    const headers=items.map(it=>({text:itemText(it),p:center(it.poly)}));
+    const hValor=headers.find(x=>clean(x.text)==="valor"||clean(x.text).includes("valor"));
+    const valorX=hValor?.p.x ?? null;
+
+    const found=[];
+    for(const row of rows){
+      const joined=row.items.map(x=>x.text).join(" ");
+      if(!clean(joined).includes("extracto aparente")) continue;
+
+      const dateText=row.items.map(x=>x.text).join(" ");
+      const d=parseDateTime(dateText,year);
+      if(!d) continue;
+
+      const candidates=[];
+      row.items.forEach(it=>{
+        for(const v of decimalCandidates(it.text)) candidates.push({v,x:it.p.x,score:it.score});
+      });
+      if(!candidates.length) continue;
+
+      // Preferir la columna Valor. Si no se detectó el encabezado,
+      // usar el candidato decimal de la fila con mayor confianza.
+      candidates.sort((a,b)=>{
+        if(valorX!=null){
+          const da=Math.abs(a.x-valorX), db=Math.abs(b.x-valorX);
+          if(da!==db) return da-db;
+        }
+        return b.score-a.score;
+      });
+      const e=candidates[0].v;
+      found.push({d,e});
+    }
+
+    // Si el OCR agrupó una fila de forma extraña, segundo pase: buscar
+    // líneas individuales que contengan fecha/hora + decimal.
+    if(!found.length){
+      for(const it of items){
+        if(!clean(it.text).includes("extracto aparente")) continue;
+        const d=parseDateTime(it.text,year); const es=decimalCandidates(it.text);
+        if(d&&es.length) found.push({d,e:es[es.length-1]});
+      }
+    }
+
+    const unique=[];
+    for(const x of found){
+      if(!unique.some(y=>Math.abs(y.d-x.d)<60000)) unique.push(x);
+    }
+    return unique.sort((a,b)=>a.d-b.d);
+  }
+
+  async function leerConPaddle(file,r,status){
+    status&&status("Cargando lector gratuito… (la primera vez puede tardar porque descarga el modelo)");
+    const ocr=await cargarOCR();
+    status&&status("Analizando la tabla en este dispositivo…");
+    const [result]=await ocr.predict(file,{textDetLimitSideLen:1536,textRecScoreThresh:0.35});
+    const items=Array.isArray(result?.items)?result.items:[];
+    if(!items.length) throw new Error("PaddleOCR no detectó texto en la imagen.");
+    const arr=parsearTabla(result,r);
+    if(!arr.length) throw new Error("Detecté texto, pero no pude asociar las filas de «Extracto Aparente» con sus valores. Puedes probar con una captura más nítida y con toda la tabla visible.");
+    return arr;
+  }
+
+  App.Act.importarCaptura = async function(lote){
+    if(!App.Store.canWrite) return toast("Modo de solo lectura.");
+    const t=App.S.tanques[lote]; if(!t) return;
+    const r=App.Calc.tanque(t);
+    let filas=[];
+
+    const norm=(arr)=>{
+      const exist=r.pts||[];
+      return arr.map(x=>({d:x.d,e:num(x.e)}))
+        .filter(x=>x.d&&x.e!=null)
+        .map(x=>{
+          const av=[];
+          if(exist.some(p=>Math.abs(p.t-x.d)<=5*60000)) av.push("Ya existe una muestra a esa hora (duplicado)");
+          if(r.fin&&x.d<r.fin) av.push("Anterior al fin de llenado");
+          if(r.eo!=null&&x.e>r.eo) av.push("Mayor que el extracto original");
+          return Object.assign(x,{av,ok:!av.some(a=>/duplicado|Anterior/.test(a))});
+        }).sort((a,b)=>a.d-b.d);
+    };
+
+    const pintar=fm=>{
+      const box=fm.querySelector("#capRes");
+      if(!filas.length){ box.innerHTML=""; return; }
+      box.innerHTML=`<div class="callout ok" style="margin-top:12px"><b>Encontré ${filas.length} muestra${filas.length>1?"s":""}.</b> Revise antes de agregar.</div>
+        <div class="card" style="overflow:hidden">${filas.map((x,i)=>`<label class="lrow" style="cursor:pointer"><input type="checkbox" data-ci="${i}" ${x.ok?"checked":""} aria-label="Incluir muestra ${fmtS(x.d)}"><span class="m"><b>${fmtS(x.d)} — ${f(x.e)} °P</b>${x.av.length?`<span style="color:var(--st-vence)">${esc(x.av.join(" · "))}</span>`:`<span>Lista para agregar</span>`}</span></label>`).join("")}</div>`;
+    };
+
+    App.UI.modal("📷 Importar captura · FV "+t.tq,`<p class="small muted" style="margin-top:0">Lector gratuito en el dispositivo: <b>PaddleOCR</b>. Solo intenta leer <b>fecha/hora</b> y <b>extracto aparente (°P)</b>. No cambia T0, extracto original, extracto límite, 15 %, 75 % ni otros datos.</p>
+      <label class="f"><span>Captura (imagen)</span><input type="file" name="img" accept="image/png,image/jpeg,image/webp"></label>
+      <div id="capPrev" style="margin-top:10px"></div><div id="capEst" class="small muted" aria-live="polite"></div><div id="capRes"></div>
+      <div class="small muted" style="margin-top:10px">🔒 La imagen no se envía a OpenAI ni a OCR.space. El reconocimiento se ejecuta localmente en este navegador. La primera lectura puede tardar mientras se descarga el modelo gratuito.</div>`,{wide:true,ok:"Agregar muestras",
+      onOpen(fm){
+        fm.elements.img.onchange=async()=>{
+          const file=fm.elements.img.files[0]; if(!file) return;
+          filas=[]; pintar(fm);
+          const url=URL.createObjectURL(file);
+          fm.querySelector("#capPrev").innerHTML=`<img alt="Captura cargada" style="max-width:100%;max-height:220px;border-radius:10px;border:1px solid var(--line)" src="${url}">`;
+          const est=fm.querySelector("#capEst");
+          try{
+            const arr=await leerConPaddle(file,r,m=>{est.textContent=m;});
+            filas=norm(arr);
+            est.textContent="✓ Lectura completada localmente. Revise los resultados antes de agregar.";
+            pintar(fm);
+          }catch(e){
+            est.textContent="⚠️ "+String(e?.message||e||"No se pudo leer la captura.");
+            pintar(fm);
+          }
+        };
+        fm.querySelector("#capRes").addEventListener("change",e=>{ const i=e.target.dataset.ci; if(i!=null&&filas[+i]) filas[+i].ok=e.target.checked; });
+      },
+      async onSubmit(fm,showErr){
+        const sel=filas.filter(x=>x.ok);
+        if(!sel.length){ showErr("No hay muestras seleccionadas para agregar."); return false; }
+        if(!await App.Sec.confirmar("¿Agregar muestras?",`Se agregarán ${sel.length} muestra${sel.length>1?"s":""} a FV ${t.tq}:<br>${sel.map(x=>fmtS(x.d)+" — "+f(x.e)+" °P").join("<br>")}`,"Agregar muestras")) return false;
+        const d=clone(App.S.tanques[lote]);
+        d.muestras=(d.muestras||[]).concat(sel.map(x=>({t:toIn(x.d),ext:x.e,obs:"Importada con PaddleOCR"})));
+        if(await App.Store.set("tanques",lote,d)){ toast(sel.length+" muestra"+(sel.length>1?"s":"")+" agregada"+(sel.length>1?"s":"")); return true; }
+        return false;
+      }
+    });
+  };
+
+  App.PaddleOCR={
+    cargar:cargarOCR,
+    leer:leerConPaddle,
+    reset:()=>{ ocrPromise=null; }
+  };
+})();

@@ -1,0 +1,265 @@
+
+/* ============================================================
+   v30 — Estilo Apple en TODA la plataforma
+   Mismo lenguaje del Inicio: títulos grandes, tarjetas blancas de
+   18 px con sombra suave, sin bordes de color, botones píldora,
+   controles planos en gris, tablas limpias y hojas con desenfoque.
+   ============================================================ */
+:root{--v30-card:0 0 0 1px rgba(0,0,0,.02),2px 4px 12px rgba(0,0,0,.08);--v30-fill:color-mix(in srgb,var(--ink) 6%,transparent);--v30-fill-h:color-mix(in srgb,var(--ink) 10%,transparent)}
+:root[data-theme="dark"]{--v30-card:0 0 0 1px rgba(255,255,255,.07)}
+
+/* ---------- Encabezados de página ---------- */
+.content .page-h,.config-hero,.curve-hero{background:none!important;border:0!important;box-shadow:none!important;padding:8px 0 30px!important;border-radius:0!important;margin:0!important;align-items:flex-end!important}
+.content .page-h h1,.config-hero h1{font-size:clamp(34px,4.4vw,56px)!important;line-height:1.06!important;font-weight:600!important;letter-spacing:-.035em!important;margin:0!important;color:var(--ink)!important}
+.content .page-h p,.config-hero p{font-size:clamp(16px,1.5vw,19px)!important;line-height:1.4!important;color:var(--muted)!important;margin:10px 0 0!important;max-width:720px}
+.yeast-eyebrow,.config-eyebrow,.curve-eyebrow{display:none!important}
+.content .page-h .acts{gap:10px!important}
+
+/* ---------- Tarjetas ---------- */
+.card,.tcard,.ccard,.posx,.lev-card,.lev-priority-card,.lev-priority-item,.kpi,.history-card,.attention-card,.home-panel,.collector-panel,.config-section,.yd-section,.yd-hero,.gen-counter,.lev-bank-overview,.tank-overview-item,.tank-toolbar,.life,.life-v2,.callout.card,.bd-card,.bd-panel,.bd-hero{
+  background:var(--surface)!important;border:0!important;border-radius:18px!important;box-shadow:var(--v30-card)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.card::before,.card::after,.tank-card::before,.tcard::before,.ccard::before,.config-section::before{display:none!important}
+.tanques-v2 .tank-card,.tank-card{border:0!important;border-radius:18px!important;box-shadow:var(--v30-card)!important;background:var(--surface)!important}
+.tanques-v2 .tank-card:hover,.card:hover,.ccard:hover,.lev-priority-item:hover{transform:scale(1.008)!important;box-shadow:var(--a-card-sh-h)!important}
+.tanques-v2 .tank-card{border-top:0!important}
+/* el estado se comunica con un punto, no con una franja de color */
+.tanques-v2 .tank-card .tank-top .tank-fv,.tanques-v2 .tank-card h3,.tanques-v2 .tank-card .tank-name{color:var(--ink)!important}
+.tanques-v2 .tank-card[style*="--tank-color"]{box-shadow:var(--v30-card)!important}
+
+/* ---------- Mosaicos de resumen (KPI) ---------- */
+.tank-overview{gap:20px!important}
+.tank-overview-item{padding:22px 24px!important;gap:6px!important;align-items:flex-start!important;flex-direction:column!important;display:flex!important;min-height:0!important;text-decoration:none;color:var(--ink)}
+.tank-overview-icon{display:none!important}
+
+.tank-overview-item small{font-size:13px!important;color:var(--muted)!important;font-weight:500!important;text-transform:none!important;letter-spacing:0!important}
+.tank-overview-item b{font-size:44px!important;line-height:1!important;font-weight:600!important;letter-spacing:-.04em!important;color:var(--ink)!important}
+.tank-overview-item.urgent b{color:var(--a-red)!important}
+.tank-overview-item.ready b{color:var(--a-green)!important}
+.tank-overview-item em,.tank-overview-item i{font-style:normal;color:var(--accent)!important;font-size:13px}
+.lev-kpis{gap:20px!important}
+.lev-kpi{padding:22px 24px!important;border:0!important}
+.lev-kpi.warn,.lev-kpi.danger,.lev-kpi.urgent,.lev-kpi[class*="warn"],.lev-kpi[class*="dang"]{border:0!important;box-shadow:var(--v30-card)!important}
+.lev-kpi b,.lev-kpi strong{font-size:44px!important;font-weight:600!important;letter-spacing:-.04em!important}
+
+/* ---------- Títulos de sección dentro de las páginas ---------- */
+.sec-h h2,.sec-h h3,.config-section-head h2,.config-section-head h3,.yd-section-h h3,.gen-counter h2{font-size:24px!important;font-weight:600!important;letter-spacing:-.02em!important}
+.sec-h p,.config-section-head p{color:var(--muted)!important}
+.config-icon,.ccard-icon,.yd-icon{display:none!important}
+.config-section{padding:28px 30px!important}
+
+/* ---------- Botones ---------- */
+.btn,button.btn{border-radius:980px!important;font-weight:500!important;letter-spacing:-.01em;box-shadow:none!important;border:0!important;background:var(--v30-fill)!important;color:var(--ink)!important;min-height:38px;padding:0 18px!important;transition:background .15s,filter .15s,transform .15s}
+.btn:hover{background:var(--v30-fill-h)!important}
+.btn.pri,button.btn.pri{background:var(--accent)!important;color:#fff!important}
+.btn.pri:hover{filter:brightness(1.08);background:var(--accent)!important}
+.btn.dan,.btn.danger{background:color-mix(in srgb,#ff3b30 12%,transparent)!important;color:var(--a-red)!important}
+.btn:active{transform:scale(.97)}
+.btn:focus-visible,a:focus-visible,button:focus-visible{outline:2px solid var(--accent)!important;outline-offset:2px}
+
+/* ---------- Filtros / segmentados ---------- */
+.tank-toolbar{padding:6px!important;display:flex;flex-wrap:wrap;gap:6px}
+.tank-filter-row{gap:4px!important;background:none!important;border:0!important;padding:0!important;flex-wrap:wrap}
+.tank-filter-row a,.tank-filter-row button,.tabs button,.seg button,.segmented button,.hist-chip,.fchip,.chips button,.chips a,.tf{border:0!important;background:transparent!important;color:var(--ink-2)!important;border-radius:980px!important;font-weight:500!important;box-shadow:none!important;padding:7px 14px!important}
+.tank-filter-row a:hover,.tabs button:hover,.chips button:hover{background:var(--v30-fill)!important}
+.tank-filter-row a[aria-current],.tank-filter-row a.on,.tank-filter-row .on,.tank-filter-row .active,.tabs .on,.tabs .active,.seg .on,.segmented .on,.chips .on,.chips .active,.fchip.on{background:var(--ink)!important;color:var(--bg)!important}
+.tank-filter-row .on *,.tank-filter-row a[aria-current] *{color:inherit!important}
+
+/* ---------- Campos de formulario ---------- */
+input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea,.inp{background:var(--v30-fill)!important;border:1px solid transparent!important;border-radius:12px!important;box-shadow:none!important;color:var(--ink)!important;font-size:15px!important;transition:background .15s,border-color .15s,box-shadow .15s}
+input:not([type=checkbox]):not([type=radio]):not([type=range]):focus,select:focus,textarea:focus,.inp:focus{background:var(--surface)!important;border-color:var(--accent)!important;box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 22%,transparent)!important;outline:0!important}
+.search-in,.tank-search,.bd-search,.hist-search{background:var(--v30-fill)!important;border:0!important;border-radius:12px!important;box-shadow:none!important}
+.search-in input,.tank-search input{background:transparent!important;border:0!important;box-shadow:none!important}
+label,.fg label,.fg>span{text-transform:none!important;letter-spacing:0!important;font-size:13px!important;font-weight:500!important;color:var(--muted)!important}
+.config-help,.callout{border:0!important;background:var(--v30-fill)!important;border-radius:14px!important;color:var(--ink-2)!important}
+.callout.warn,.callout.warning{background:color-mix(in srgb,#ff9500 14%,transparent)!important}
+.callout.err,.callout.danger{background:color-mix(in srgb,#ff3b30 12%,transparent)!important}
+
+/* ---------- Etiquetas de estado: suaves y sin borde ---------- */
+.badge,.pill,.status,.tag,.tank-status,.lp-status,.cstate,.lev-state{border:0!important;border-radius:980px!important;font-weight:600!important;letter-spacing:0!important;text-transform:none!important;box-shadow:none!important}
+.lp-status,.lev-priority-item .lp-status{text-transform:none!important;letter-spacing:0!important;font-size:12px!important}
+
+/* ---------- Tablas ---------- */
+table{border-collapse:collapse}
+thead th,.yd-table-wrap th,.bd-table th{background:transparent!important;color:var(--muted)!important;font-size:12px!important;font-weight:500!important;text-transform:none!important;letter-spacing:0!important;border-bottom:1px solid var(--line)!important}
+.bd-group-row th,.bd-groups th,thead tr:first-child th[colspan]{background:var(--v30-fill)!important;color:var(--ink)!important;font-weight:600!important;font-size:12px!important;text-transform:none!important;letter-spacing:0!important}
+tbody td{border-bottom:1px solid var(--line)!important;font-size:14px}
+tbody tr:hover td{background:var(--v30-fill)!important}
+.yd-table-wrap,.bd-table-wrap,.tbl-wrap{border:0!important;border-radius:14px!important}
+td a,.bd-link{color:var(--accent)!important;font-weight:500!important}
+
+/* ---------- Historial / líneas de tiempo ---------- */
+.hist-day,.tl-day,.day-h{background:transparent!important;border:0!important;font-size:13px!important;font-weight:600!important;color:var(--muted)!important;text-transform:none!important;letter-spacing:0!important;padding:18px 4px 8px!important}
+.tl-row,.hist-row,.tl li{border-bottom:1px solid var(--line)!important}
+.tl-ic,.hist-ic,.ev-ic{border-radius:50%!important}
+
+/* ---------- Gráficas y progreso ---------- */
+.gen-counter-current{background:var(--accent-soft)!important;border:0!important;border-radius:16px!important}
+.lp-bar,.bar,.progress{border-radius:4px!important}
+
+/* ---------- Detalle de tanque ---------- */
+.life,.life-v2{padding:24px 26px!important}
+.t0-route,.window,.projection,.steps,.guide-line{border-radius:14px!important}
+.tank-hero,.fv-hero,.tdetail-hero,.tank-head{background:var(--surface)!important;border:0!important;border-radius:18px!important;box-shadow:var(--v30-card)!important}
+.tank-hero::before,.tank-hero::after,.fv-hero::before{display:none!important}
+.back,.crumb,a.back{color:var(--accent)!important;font-size:15px!important}
+
+/* ---------- Hojas y diálogos ---------- */
+dialog{border:0!important;border-radius:22px!important;box-shadow:0 30px 90px rgba(0,0,0,.28)!important;background:var(--surface)!important;color:var(--ink)!important}
+dialog::backdrop{background:rgba(0,0,0,.32)!important;backdrop-filter:blur(12px) saturate(120%);-webkit-backdrop-filter:blur(12px) saturate(120%)}
+dialog h2,dialog h3{font-weight:600!important;letter-spacing:-.02em!important}
+.toast,#toast .t{border-radius:980px!important;box-shadow:0 10px 30px rgba(0,0,0,.2)!important;border:0!important}
+
+/* ---------- Barra superior: buscador y marca ---------- */
+@media (min-width:901px){ .topbar .gsearch .box input{background:transparent!important;border:0!important;box-shadow:none!important} }
+
+
+/* ---------- Afinado v30 ---------- */
+/* mayúsculas pequeñas → texto normal, como en apple.com */
+.label,.lbl,.k,.fv-hero-tag,.fv-side-h,.bd-eyebrow,.hist-eyebrow,.tank-info .label,.yd-kicker,.fv-t0 .lbl{text-transform:none!important;letter-spacing:0!important;font-size:12px!important;font-weight:500!important;color:var(--muted)!important}
+.fv-hero-tag{font-size:14px!important}
+
+/* KPI de Tanques: etiqueta arriba, cifra grande, enlace abajo */
+.tank-overview-item{display:flex!important;flex-direction:column!important;align-items:flex-start!important}
+.tank-overview-item>span:nth-child(2){display:flex!important;flex-direction:column;gap:6px;width:100%}
+.tank-overview-item small{order:1}
+.tank-overview-item b{order:2;display:block}
+.tank-overview-item em{margin-top:6px}
+
+/* Tarjeta de tanque */
+.tanques-v2 .tank-list{gap:20px!important}
+.tanques-v2 .tank-card{padding:26px 26px 22px!important;aspect-ratio:auto!important;min-height:0!important;gap:18px!important}
+.tank-fv a{color:var(--ink)!important;font-size:40px!important;font-weight:600!important;letter-spacing:-.04em!important;line-height:1!important}
+.tank-top{width:100%!important;align-self:stretch!important;justify-content:space-between!important}
+.tank-status{display:flex!important;flex-direction:column;align-items:flex-start!important;gap:4px}
+.tank-lote{display:flex!important;flex-direction:column;gap:2px;margin-top:8px}
+.tank-lote b{font-size:15px!important;font-weight:600}
+.tank-lote span{font-size:13px!important;color:var(--muted)!important;text-transform:capitalize!important;letter-spacing:0!important}
+.tank-info b{font-size:17px!important;font-weight:600!important}
+.tank-info small{color:var(--muted)!important;font-size:12px!important}
+.tank-middle{padding:14px 16px;background:var(--surface-2);border-radius:12px;gap:14px!important}
+.tank-bottom{align-items:center!important}
+.tank-card .st{background:transparent!important;padding:0!important;font-size:12px!important;font-weight:600!important}
+.unitank-art{opacity:.9}
+.tank-card .btn.sm{min-height:34px;padding:0 16px!important}
+
+/* Detalle de tanque */
+.fv-hero,.fv-t0,.fv-side,.curve-guide,.fv-hero-next,.wsteps,details.calc,.calc,ol.steps{border:0!important;background-image:none!important;box-shadow:var(--v30-card)!important;border-radius:18px!important;background-color:var(--surface)!important}
+.fv-hero-next,.wsteps,ol.steps{box-shadow:none!important;background-color:var(--surface-2)!important;border-radius:14px!important}
+.fv-t0::before,.fv-t0::after,.fv-hero::before,.fv-hero::after{display:none!important}
+.fv-t0{border-top:0!important}
+.guide-line{border:0!important;height:3px;border-radius:2px;background:currentColor}
+.curve-badge,.fv-hero-badge{border:0!important;background:var(--v30-fill)!important}
+.fv-hero .fv{letter-spacing:-.04em!important}
+
+/* Explorar (BD) */
+.bd-final-dashboard{background:none!important;box-shadow:none!important;border:0!important;padding:0!important}
+.bd-final-dashboard h2{font-size:28px!important}
+.bd-final-stat,.hist-overview-card{background:var(--surface)!important;border:0!important;border-radius:18px!important;box-shadow:var(--v30-card)!important;padding:22px 24px!important;transition:transform .2s,box-shadow .2s}
+.bd-final-stat:hover,.hist-overview-card:hover{transform:scale(1.01);box-shadow:var(--a-card-sh-h)!important}
+.bd-final-stat.active,.hist-overview-card.is-active{box-shadow:0 0 0 2px var(--accent),var(--v30-card)!important}
+.bd-final-stat>span{font-size:0!important;width:0;display:none}
+.bd-final-stat b{font-size:40px!important;font-weight:600!important;letter-spacing:-.04em!important;display:block}
+.bd-final-stat small{font-size:14px!important;font-weight:600;color:var(--ink)!important}
+.bd-final-stat i{font-style:normal;color:var(--muted)!important;font-size:13px}
+.bd-view-switch,.hist-type-switch{border:0!important;background:var(--v30-fill)!important;border-radius:980px!important;padding:3px!important}
+.bd-view-switch button.on,.bd-view-switch button.active,.bd-view-switch .is-active{background:var(--surface)!important;color:var(--ink)!important;box-shadow:0 1px 3px rgba(0,0,0,.15)!important}
+.bd-view-switch button{border-radius:980px!important;border:0!important;background:transparent!important}
+.bd-record-browser,.hist-tools,details.hist-advanced,.bd-record-more,.bd-row-detail-empty{border:0!important;box-shadow:var(--v30-card)!important;border-radius:18px!important;background:var(--surface)!important}
+.bd-yeast-state,.bd-state{border:0!important}
+.hist-type-btn{border:0!important;background:var(--v30-fill)!important;border-radius:980px!important}
+.hist-type-btn.active{background:var(--ink)!important;color:var(--bg)!important}
+.hist-type-btn.active *{color:inherit!important}
+
+/* Levaduras */
+.lev-kpi{background:var(--surface)!important;background-image:none!important}
+.lev-kpi.critical b{color:var(--a-red)!important}
+.lev-kpi.warning b{color:var(--a-orange)!important}
+.gen-counter{padding:26px 28px!important}
+.gen-counter-total,.lev-chain-list{border:0!important}
+.sec-h{padding:0 2px}
+
+
+/* texto en mayúsculas → normal en toda la vista (salvo siglas) */
+#view *{text-transform:none!important}
+#view .tank-lote span{text-transform:capitalize!important}
+.bd-final-stat{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:2px!important;text-align:left}
+.bd-final-stat>div{display:flex;flex-direction:column;gap:2px}
+.bd-final-stat b{order:0}
+
+
+/* chips (aria-pressed) */
+.chip{border:0!important;background:transparent!important;color:var(--ink-2)!important;border-radius:980px!important;font-weight:500!important;box-shadow:none!important;padding:7px 14px!important}
+.chip:hover{background:var(--v30-fill)!important}
+.chip[aria-pressed="true"]{background:var(--ink)!important;color:var(--bg)!important}
+.chip[aria-pressed="true"] *{color:inherit!important}
+.chip .c{opacity:.6;margin-left:4px}
+.tank-toolbar{background:transparent!important;box-shadow:none!important;padding:0!important;gap:12px!important}
+.search-in{padding:0 12px!important;display:flex;align-items:center;gap:8px}
+.search-in input{background:transparent!important;border:0!important;box-shadow:none!important;padding-left:0!important}
+.search-in input:focus{background:transparent!important;box-shadow:none!important}
+.sec.lev-bank-overview{background:transparent!important;box-shadow:none!important;border-radius:0!important;padding:0!important}
+.config-page{max-width:none!important}
+
+
+.search-in input[type="search"],.search-in input[type="text"],.gsearch input[type="search"],.gsearch input[type="text"],.gsearch input,.hist-search input,.bd-search input{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important}
+.search-in input:focus,.gsearch input:focus{background:transparent!important;box-shadow:none!important;border:0!important}
+.search-in:focus-within,.gsearch .box:focus-within{box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 22%,transparent)!important}
+
+
+/* ---------- Ronda 2: auditoría completa ---------- */
+/* buscadores: una sola capa gris (le gana al selector genérico de inputs) */
+.search-in input:not([type=checkbox]):not([type=radio]):not([type=range]),.gsearch input:not([type=checkbox]):not([type=radio]):not([type=range]){background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important}
+.search-in input:not([type=checkbox]):not([type=radio]):not([type=range]):focus,.gsearch input:not([type=checkbox]):not([type=radio]):not([type=range]):focus{background:transparent!important;box-shadow:none!important;border:0!important}
+.search-in{border:0!important}
+[class*="search"] input:not([type=checkbox]):not([type=radio]):not([type=range]){background:transparent!important;box-shadow:none!important;border-color:transparent!important}
+
+/* Colectores: detalle */
+.cpanel{padding:28px!important}
+.posx,.posx.collector-detail,.posx.libre{background:var(--surface-2)!important;box-shadow:none!important;border:0!important;border-radius:16px!important}
+.collector-time-hero,.collector-metrics>*,.collector-deadlines>*,.collector-timeline .ct-step{border:0!important;box-shadow:none!important;background:var(--surface)!important;border-radius:14px!important}
+.collector-time-hero{padding:18px 20px!important}
+.collector-section-title{font-size:17px!important;font-weight:600!important;color:var(--ink)!important;letter-spacing:-.01em!important;text-transform:none!important}
+.collector-detail .acts{display:flex!important;flex-wrap:wrap;gap:8px!important}
+.ccard.on{box-shadow:0 0 0 2px var(--accent),var(--v30-card)!important}
+.ccard-fill-track{height:6px!important;border-radius:3px!important}
+.status-chip{background:transparent!important;padding:0!important;font-weight:600!important}
+
+/* Explorar: tarjetas y grupos */
+.bd-final-group{border:0!important;background:transparent!important;box-shadow:none!important;padding:0!important}
+.bd-final-card{border:0!important;border-radius:18px!important;box-shadow:var(--v30-card)!important;background:var(--surface)!important}
+.bd-final-card:hover{transform:scale(1.008);box-shadow:var(--a-card-sh-h)!important}
+.bd-final-card [class*="grid"]>*,.bd-final-card [class*="mini"]{background:var(--surface-2)!important;border:0!important;border-radius:12px!important}
+.bd-final-group h3{font-size:24px!important;font-weight:600!important;letter-spacing:-.02em!important}
+.bd-hero,.bd-final-hero,.bd-final-search{background:transparent!important;border:0!important;box-shadow:none!important;padding:0 0 18px!important}
+.bd-final-hero h2,.bd-hero h2{font-size:22px!important;font-weight:600!important;letter-spacing:-.02em!important}
+
+/* Cifra: panel limpio, burbujas planas */
+.bot{background:var(--surface)!important;background-image:none!important;border:0!important;backdrop-filter:saturate(180%) blur(24px)}
+.bot-h{background:transparent!important;background-image:none!important;border-bottom:1px solid var(--line)!important}
+.bot-status,.bot-ctx{border:0!important;background:var(--v30-fill)!important;border-radius:980px!important}
+.bot-m{background:transparent!important;background-image:none!important}
+.bm,.bm.b{background:var(--surface-2)!important;background-image:none!important;border:0!important;border-radius:20px!important;box-shadow:none!important;color:var(--ink)!important}
+.bm.u,.bm.me,.bm.user{background:var(--accent)!important;color:#fff!important}
+.bot-f{border:0!important;border-top:1px solid var(--line)!important;background:transparent!important}
+.bot-opts .chip,.bot .chip{background:var(--v30-fill)!important;border-radius:980px!important}
+.bot-opts .chip:hover{background:var(--v30-fill-h)!important}
+
+/* Diálogos: botón Cerrar como píldora gris */
+dialog .btn.close,dialog [data-close],dialog .modal-x{background:var(--v30-fill)!important;border:0!important;color:var(--ink)!important}
+dialog header,dialog .dlg-h,dialog .modal-h{border-bottom:1px solid var(--line)!important}
+dialog footer,dialog .dlg-f,dialog .modal-f{border-top:1px solid var(--line)!important;background:transparent!important}
+
+/* Detalle de tanque: tarjetas internas planas */
+.fv-t0 .tl,.fv-t0>div{border-radius:14px}
+.curve-stat,.curve-kpi,.curve-card,[class^="curve-"]>div{border-radius:14px}
+.card .card,.sec .sec{box-shadow:none!important;background:var(--surface-2)!important}
+.card .card .card{background:var(--surface)!important}
+.life-v2 .life-card,.life-card{border:0!important;background:var(--surface-2)!important;box-shadow:none!important;border-radius:16px!important}
+
+/* ---------- Móvil ---------- */
+@media (max-width:900px){
+  .content .page-h{padding:6px 0 22px!important;flex-direction:column;align-items:flex-start!important;gap:14px}
+  .tank-overview-item b,.lev-kpi b{font-size:34px!important}
+  .config-section{padding:22px 20px!important}
+}
+@media (prefers-reduced-motion:reduce){ .tanques-v2 .tank-card:hover,.card:hover{transform:none!important} }

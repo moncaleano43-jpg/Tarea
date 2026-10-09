@@ -1,0 +1,155 @@
+
+/* ============================================================
+   store.js — almacenamiento local
+   ============================================================ */
+App.S = {tanques:{},colectores:{},bdlev:{},config:{},colhist:{},eventos:{},ready:false};
+App.Store = (function(){
+  const {clone,toast} = App.U, COLS=["tanques","colectores","bdlev","config","colhist","eventos"];
+  const Local={KEY:"inventarioLevadura:v2",L:{},cbs:{},
+    init(){ let raw=null; try{ raw=localStorage.getItem(this.KEY); }catch(e){} try{ this.L=raw?JSON.parse(raw):(App.SEED?JSON.parse(JSON.stringify(App.SEED)):{}); }catch(e){ this.L={}; } COLS.forEach(c=>this.L[c]=this.L[c]||{}); const mig=!!(App.BDMig&&App.BDMig(this.L)); if((!raw&&App.SEED)||mig) this.save(); },
+    save(){ try{ localStorage.setItem(this.KEY,JSON.stringify(this.L)); }catch(e){ toast("El navegador no tiene espacio."); throw e; } },
+    watch(c,cb){ this.cbs[c]=cb; cb({...this.L[c]}); },
+    async set(c,id,d){ const had=Object.prototype.hasOwnProperty.call(this.L[c],id), before=this.L[c][id]; this.L[c][id]=clone(d); try{this.save();}catch(e){if(had)this.L[c][id]=before;else delete this.L[c][id];throw e;} this.cbs[c]&&this.cbs[c]({...this.L[c]}); },
+    async del(c,id){ delete this.L[c][id]; this.save(); this.cbs[c]&&this.cbs[c]({...this.L[c]}); }};
+  const Db={db:null,
+    watch(c,cb){ this.db.collection(c).limit(1000).onSnapshot(s=>{ const o={}; s.docs.forEach(d=>{ if(d.exists) o[d.id]=d.data(); }); cb(o); },()=>toast("Se perdió la conexión con la base de datos.")); },
+    async set(c,id,d){ await this.db.collection(c).doc(id).set(d); },
+    async del(c,id){ await this.db.collection(c).doc(id).delete(); }};
+  let A=Local, mode="local", canWrite=true;
+  async function init(onChange){
+    let db=null; if(window.claude&&typeof window.claude.use==="function"){
+      const pedir=n=>Promise.race([Promise.resolve().then(()=>window.claude.use(n)).catch(()=>null),new Promise(r=>setTimeout(()=>r(null),2500))]);
+      const [d,u,dl]=await Promise.all([pedir("db"),pedir("user"),pedir("downloads")]);
+      db=d; App.downloads=dl;
+      try{ if(db&&u&&(await u.can("data.write"))===false) canWrite=false; }catch(e){} }
+    if(db){ Db.db=db; A=Db; mode="db"; } else Local.init();
+    const seen=new Set();
+    COLS.forEach(c=>A.watch(c,o=>{ App.S[c]=o; seen.add(c); if(seen.size===COLS.length) App.S.ready=true; onChange(c); }));
+  }
+  function err(e){ const c=e&&e.code; if(c==="invalid_argument"||c==="readonly"){ canWrite=false; toast("No tiene permiso para modificar datos."); } else if(c==="quota_exceeded") toast("La base de datos está llena."); else toast("No se pudo guardar. Intente de nuevo."); return false; }
+  async function set(c,id,d){ if(!canWrite){ toast("Modo de solo lectura."); return false; } const x=clone(d); x.actualizado=new Date().toISOString(); try{ await A.set(c,id,x); App.S[c][id]=x; touch(); return true; }catch(e){ return err(e); } }
+  async function del(c,id){ if(!canWrite){ toast("Modo de solo lectura."); return false; } try{ await A.del(c,id); delete App.S[c][id]; touch(); return true; }catch(e){ return err(e); } }
+  let tT; function touch(){ clearTimeout(tT); tT=setTimeout(()=>{ A.set("config","meta",{actualizado:new Date().toISOString()}).catch(()=>{}); },700); }
+  async function setMany(c,obj){ if(!canWrite){ toast("Modo de solo lectura."); return false; } const now=new Date().toISOString();
+    try{ if(A===Local){const beforeL=clone(Local.L[c]),beforeS=clone(App.S[c]);try{Object.entries(obj).forEach(([id,d])=>{const x=clone(d);x.actualizado=now;Local.L[c][id]=x;App.S[c][id]=x;});Local.save();}catch(e){Local.L[c]=beforeL;App.S[c]=beforeS;throw e;}Local.cbs[c]&&Local.cbs[c]({...Local.L[c]});}
+      else { for(const [id,d] of Object.entries(obj)){ const x=clone(d); x.actualizado=now; await A.set(c,id,x); App.S[c][id]=x; } }
+      touch(); return true; }catch(e){ return err(e); } }
+  return {init,set,del,setMany,get mode(){return mode;},get canWrite(){return canWrite;}};
+})();
+
+/* ============================================================
+   terms.js — terminología
+   ============================================================ */
+App.T = (function(){
+  const {parseDT,HOUR,num} = App.U;
+  const EST={rojo:"Retiro pendiente",naranja:"Retiro próximo",verde:"Lista para retirar",amarillo:"T0 se aproxima",gris:"En proceso",sin:"Sin T0"};
+  const estado=st=>({k:st.k,txt:EST[st.k]||st.txt});
+  const genResultante=r=>{ const p=App.Calc.parseLev(r&&r.nombreCosecha); return p?p.gen:null; };
+  function genAviso(g){
+    if(g==null) return null;
+    if(g===8) return {k:"naranja",corto:"Gen 8 · último ciclo",txt:"Esta cosecha pasará a Generación 8 · Último ciclo recomendado."};
+    if(g>=9) return {k:"rojo",corto:"Gen "+g+" · uso excepcional",txt:"Uso excepcional · Esta cosecha pasará a Generación "+g+"."};
+    return null;
+  }
+  const genAvisoColector=c=>{ const g=num(c&&c.generacion); return g==null?null:genAviso(g+1); };
+  function estadoLevColector(c,now=Date.now()){
+    if(c.marcaDescarte) return {k:"naranja",txt:"Marcada para descarte"};
+    const mr=parseDT(c.maxAbi);
+    if(mr&&now>+mr) return {k:"amarillo",txt:"Pendiente de decisión"};
+    return {k:"verde",txt:"Disponible"};
+  }
+  function tiempoColector(c,now=Date.now()){
+    const ing=parseDT(c.ingreso||c.retiro||c.finRemocion), mr=parseDT(c.maxAbi);
+    const k=!mr?"sin":now>+mr?"rojo":(+mr-now)<=12*HOUR?"naranja":"verde";
+    return {ing,mr,k,lleva:ing?now-ing:null,resta:mr?+mr-now:null};
+  }
+  return {EST,estado,genResultante,genAviso,genAvisoColector,estadoLevColector,tiempoColector};
+})();
+
+/* ============================================================
+   security.js — PIN/contraseña
+   ============================================================ */
+App.Sec = (function(){
+  const {esc,toast} = App.U;
+  const SALT="invlev-v3";
+  const INICIAL="117aa9257d0979a8665e0b4950602152df7223dd8842294ffa88aa66b6a9df06";
+  const SESION_MS=10*60*1000; let autorizadoHasta=0;
+  function sha256(str){
+    const K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+    const bytes=new TextEncoder().encode(str), l=bytes.length, words=[];
+    for(let i=0;i<l;i++) words[i>>2]|=bytes[i]<<(24-(i%4)*8);
+    words[l>>2]|=0x80<<(24-(l%4)*8); const nw=(((l+8)>>6)+1)*16; for(let i=(l>>2)+1;i<nw;i++) words[i]=words[i]|0; words[nw-1]=l*8;
+    let H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+    const r=(x,n)=>(x>>>n)|(x<<(32-n));
+    for(let i=0;i<nw;i+=16){ const w=words.slice(i,i+16).map(x=>x|0); for(let t=16;t<64;t++){ const s0=r(w[t-15],7)^r(w[t-15],18)^(w[t-15]>>>3), s1=r(w[t-2],17)^r(w[t-2],19)^(w[t-2]>>>10); w[t]=(w[t-16]+s0+w[t-7]+s1)|0; }
+      let [a,b,c,d,e,f,g,h]=H;
+      for(let t=0;t<64;t++){ const S1=r(e,6)^r(e,11)^r(e,25), ch=(e&f)^(~e&g), t1=(h+S1+ch+K[t]+w[t])|0, S0=r(a,2)^r(a,13)^r(a,22), mj=(a&b)^(a&c)^(b&c), t2=(S0+mj)|0; h=g; g=f; f=e; e=(d+t1)|0; d=c; c=b; b=a; a=(t1+t2)|0; }
+      H=H.map((x,k)=>(x+[a,b,c,d,e,f,g,h][k])|0); }
+    return H.map(x=>(x>>>0).toString(16).padStart(8,"0")).join("");
+  }
+  const huella=pwd=>sha256(SALT+"|"+pwd);
+  const actual=()=>((App.S.config.seguridad||{}).hash)||INICIAL;
+  const verificar=pwd=>!!pwd&&huella(pwd)===actual();
+  const vigente=()=>Date.now()<autorizadoHasta;
+  async function confirmar(titulo,texto,ok="Confirmar"){
+    return !!(await App.UI.form({title:"⚠️ "+titulo,intro:texto,fields:[],ok}));
+  }
+  async function pin(accion){
+    if(vigente()) return true;
+    for(let intento=0;intento<3;intento++){
+      const v=await App.UI.form({title:"🔒 Autorización requerida",intro:`<b>${esc(accion)}</b> es un cambio crítico. Ingrese la contraseña de autorización.${intento?'<div class="callout err">Contraseña incorrecta.</div>':""}`,
+        fields:[{k:"p",l:"Contraseña",t:"pwd",req:true}],ok:"Autorizar",onOpen:d=>setTimeout(()=>d.querySelector("[name=p]").focus(),50)});
+      if(!v) return false;
+      if(verificar(v.p)){ autorizadoHasta=Date.now()+SESION_MS; return true; }
+    }
+    toast("No se autorizó el cambio."); return false;
+  }
+  async function auditar(accion,antes,despues,detalle){
+    const id="a"+Date.now()+Math.random().toString(36).slice(2,6);
+    await App.Store.set("eventos",id,{t:new Date().toISOString(),tipo:"critico",accion,antes:antes==null?"—":String(antes),despues:despues==null?"—":String(despues),detalle:detalle||"",autorizacion:"PIN"});
+  }
+  async function evento(tipo,datos){
+    const id="e"+Date.now()+Math.random().toString(36).slice(2,6);
+    await App.Store.set("eventos",id,Object.assign({t:new Date().toISOString(),tipo},datos));
+  }
+  async function cambiar(actualPwd,nueva,confirma){
+    if(!verificar(actualPwd)) return {ok:false,msg:"La contraseña actual no es correcta."};
+    if(!nueva||nueva.length<6) return {ok:false,msg:"La nueva contraseña debe tener al menos 6 caracteres."};
+    if(nueva!==confirma) return {ok:false,msg:"La confirmación no coincide con la nueva contraseña."};
+    if(!await App.Store.set("config","seguridad",{hash:huella(nueva),cambiada:new Date().toISOString()})) return {ok:false,msg:"No se pudo guardar el cambio."};
+    await auditar("Contraseña de autorización cambiada","(oculta)","(oculta)");
+    autorizadoHasta=0; return {ok:true,msg:"Contraseña actualizada. La anterior ya no funciona."};
+  }
+  async function cambiarDialogo(){
+    const v=await App.UI.form({title:"Cambiar contraseña",fields:[{k:"a",l:"Contraseña actual",t:"pwd",req:true},{k:"n",l:"Nueva contraseña",t:"pwd",req:true},{k:"c",l:"Confirmar nueva contraseña",t:"pwd",req:true}],ok:"Cambiar contraseña"});
+    if(!v) return; const r=await cambiar(v.a,v.n,v.c); toast(r.msg);
+  }
+  return {confirmar,pin,auditar,evento,cambiar,cambiarDialogo,verificar,vigente,_sha256:sha256};
+})();
+
+/* ============================================================
+   traza.js — trazabilidad de levaduras
+   ============================================================ */
+App.Traza = (function(){
+  const {parseDT} = App.U;
+  const N=s=>String(s||"").toUpperCase().replace(/^\(P\)\s*/,"").trim();
+  const origen=nombre=>{ nombre=N(nombre); const e=Object.entries(App.S.bdlev).filter(([,b])=>N(b.nombre)===nombre&&b.destino!=="DES").sort((a,b)=>String(b[1].retiro).localeCompare(String(a[1].retiro)))[0]; return e?Object.assign({id:e[0]},e[1]):null; };
+  const salidaDeLote=lote=>{ const b=App.S.bdlev["L-"+lote]; if(b) return Object.assign({id:"L-"+lote},b); const e=Object.entries(App.S.bdlev).find(([,x])=>x.lote===lote); return e?Object.assign({id:e[0]},e[1]):null; };
+  function usos(nombre){
+    nombre=N(nombre); const m={};
+    Object.values(App.S.tanques).forEach(t=>{ if(N((t.levadura||{}).nombre)===nombre) m[t.lote]={lote:t.lote,tq:String(t.tq),fecha:t.fin,marca:t.marca,activo:!(t.retiro||{}).fecha}; });
+    Object.values(App.S.bdlev).forEach(b=>{ if(N(b.nombre)===nombre) (b.siembras||[]).forEach(z=>{ if(z.lote&&!m[z.lote]) m[z.lote]={lote:z.lote,tq:String(z.tq),fecha:z.fecha,hl:z.hl}; else if(z.lote&&m[z.lote]&&z.hl!=null) m[z.lote].hl=z.hl; });
+      if(N(b.levSembrada)===nombre&&b.lote&&!m[b.lote]) m[b.lote]={lote:b.lote,tq:String(b.tq),fecha:null,marca:b.marca}; });
+    return Object.values(m).map(u=>Object.assign(u,{salida:salidaDeLote(u.lote)})).sort((a,b)=>String(a.fecha||"").localeCompare(String(b.fecha||"")));
+  }
+  function sembradaEn(lote){
+    const t=App.S.tanques[lote]; if(t&&(t.levadura||{}).nombre) return {nombre:t.levadura.nombre,generacion:t.levadura.generacion,fecha:t.fin,tq:t.tq,marca:t.marca,colector:t.levadura.colector,origen:t.levadura.origen};
+    const b=salidaDeLote(lote); if(b&&b.levSembrada) return {nombre:b.levSembrada,tq:b.tq,marca:b.marca};
+    for(const x of Object.values(App.S.bdlev)) for(const z of (x.siembras||[])) if(z.lote===lote) return {nombre:x.nombre,generacion:x.generacion,fecha:z.fecha,tq:z.tq,hl:z.hl,marca:null};
+    return null;
+  }
+  function lote(l){ l=N(l); const t=App.S.tanques[l]; const s=sembradaEn(l), sal=salidaDeLote(l);
+    if(!t&&!s&&!sal) return null; return {lote:l,tq:t?t.tq:(sal?sal.tq:(s?s.tq:null)),marca:t?t.marca:(sal&&sal.marca),fin:t?t.fin:null,sembrada:s,salida:sal,activo:t?!(t.retiro||{}).fecha:false}; }
+  const nombres=()=>[...new Set([...Object.values(App.S.bdlev).map(b=>N(b.nombre)),...Object.values(App.S.tanques).map(t=>N((t.levadura||{}).nombre)),...Object.values(App.S.colectores).map(c=>N(c.nombre))].filter(Boolean))];
+  return {usos,sembradaEn,salidaDeLote,lote,origen,nombres,N};
+})();

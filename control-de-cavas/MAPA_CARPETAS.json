@@ -1,0 +1,158 @@
+{
+  "js/nucleo-compartido": [
+    "01-bloque.js",
+    "02-bloque.js",
+    "03-bloque.js",
+    "04-bloque.js",
+    "05-bloque.js",
+    "07-bloque.js",
+    "08-bloque.js",
+    "09-bloque.js",
+    "10-bloque.js",
+    "11-bloque.js",
+    "12-bloque.js",
+    "13-bloque.js",
+    "16-bloque.js",
+    "21-v31-modules.js",
+    "22-v32-modules.js",
+    "23-v33-modules.js",
+    "24-v34-modules.js",
+    "25-v35-modules.js",
+    "26-v36-modules.js",
+    "27-v37-modules.js",
+    "28-v38-modules.js",
+    "29-v39-modules.js",
+    "30-v41-modules.js",
+    "42-platform-rules-module.js",
+    "45-platform-finish-module.js",
+    "48-process-analytics-module.js",
+    "49-control-studio-module.js",
+    "55-v42-31-metas-js.js",
+    "57-v42-35-hoja-js.js",
+    "58-v42-36-captura-js.js",
+    "77-v42-css-last.js"
+  ],
+  "js/levaduras-colectores": [
+    "06-bd-migracion.js",
+    "14-bd-core.js",
+    "15-bd-ui.js",
+    "17-collector-navigation-fix.js",
+    "32-cavas-inventory-module.js",
+    "44-collector-flow-module.js"
+  ],
+  "js/interfaz": [
+    "18-apple-design-runtime-v1.js",
+    "19-apple-store-v29-js.js",
+    "20-apple-everywhere-v30-js.js",
+    "56-v42-32-secciones-js.js",
+    "74-v42-60-config-js.js",
+    "76-v42-64-inicio-js.js"
+  ],
+  "js/datos-importacion": [
+    "31-cavas-inventory-seed.js",
+    "35-excel-cavas-seed.js",
+    "36-excel-cavas-module.js",
+    "37-excel-adapters-module.js",
+    "46-operations-raw-seed.js",
+    "47-operation-sources-module.js",
+    "54-v42-30-datos-js.js",
+    "59-v42-38-importador-js.js",
+    "60-v42-39-documentos-js.js"
+  ],
+  "js/tanques-fermentacion": [
+    "33-fv-registration-module.js",
+    "34-fv-detail-module.js",
+    "38-tank-process-module.js",
+    "39-tank-lab-module.js",
+    "40-tank-purges-module.js",
+    "41-tank-chart-plus-module.js",
+    "43-tank-operations-module.js"
+  ],
+  "js/operaciones": [
+    "50-operations-workspace-module.js",
+    "51-aseos-workbench-module.js"
+  ],
+  "js/analisis": [
+    "52-v42-20-stats-js.js",
+    "53-v42-25-charts-js.js",
+    "61-v42-40-analisis-base-js.js",
+    "62-v42-41-an-resumen-js.js",
+    "63-v42-42-an-agua-js.js",
+    "64-v42-43-an-merma-js.js",
+    "65-v42-44-an-fermentacion-js.js",
+    "66-v42-45-an-recuperacion-js.js",
+    "67-v42-46-an-operacion-js.js",
+    "68-v42-47-an-calidad-js.js",
+    "69-v42-48-an-relaciones-js.js",
+    "70-v42-49-an-pronosticos-js.js",
+    "71-v42-4a-an-constructor-js.js"
+  ],
+  "js/asistente-cifra": [
+    "72-v42-50-asistente-js.js",
+    "73-v42-51-asistente-conocimiento-js.js",
+    "75-v42-62-paleta-js.js"
+  ],
+  "css/diseno-general": [
+    "01-bloque.css",
+    "02-apple-inicio-v2.css",
+    "06-microinteractions-v1.css",
+    "11-bloque.css",
+    "12-theme-liquid-glass-v2.css",
+    "13-post-html-style-repair.css",
+    "14-home-no-hard-borders.css",
+    "15-apple-design-system-v1.css",
+    "16-v4-refined-shell.css",
+    "20-bloque.css",
+    "21-bloque.css",
+    "28-v42-10-neutral-tokens-css.css",
+    "31-v42-35-hoja-css.css",
+    "38-v42-62-paleta-css.css",
+    "39-v42-64-inicio-css.css",
+    "44-apple-store-v29.css",
+    "45-apple-everywhere-v30.css",
+    "46-v31-styles.css",
+    "47-v32-styles.css",
+    "48-v33-styles.css",
+    "49-v34-styles.css",
+    "50-v35-styles.css",
+    "51-cavas-inventory-style.css"
+  ],
+  "css/levaduras-colectores": [
+    "03-collectors-priority-v1.css",
+    "04-collector-single-v2.css",
+    "17-bd-explorer-css.css",
+    "18-bd-trace-v6.css",
+    "19-bd-final-v7-css.css",
+    "22-collector-decisions-v19.css",
+    "23-recosecha-split-v20.css",
+    "26-levabot-v2-features.css",
+    "27-levabot-v2-controls.css",
+    "40-collector-detail-v6.css",
+    "42-levabot-visual-refresh-v27.css"
+  ],
+  "css/tanques-fermentacion": [
+    "05-tanques-apple-v1.css",
+    "07-unitank-grid-v1.css",
+    "08-unitank-polish-v2.css",
+    "09-tank-card-navigation.css",
+    "10-fv-compact-overrides.css",
+    "24-home-tanks-polish-v23.css",
+    "25-curve-yeast-config-polish-v24.css"
+  ],
+  "css/asistente-cifra": [
+    "29-v42-11-asistente-avatar-css.css",
+    "36-v42-50-asistente-css.css",
+    "41-search-assistant-polish-v25.css",
+    "43-levabot-avatar-v28.css"
+  ],
+  "css/analisis": [
+    "30-v42-26-charts-css.css",
+    "33-v42-40-analisis-css.css",
+    "34-v42-41-an-resumen-css.css",
+    "35-v42-45-an-extra-css.css"
+  ],
+  "css/configuracion-datos": [
+    "32-v42-38-importador-css.css",
+    "37-v42-60-config-css.css"
+  ]
+}

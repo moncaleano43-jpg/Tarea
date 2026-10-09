@@ -1,0 +1,19 @@
+
+.gsearch{max-width:760px}
+.gsearch .box{min-height:48px;border-radius:14px;padding:0 14px;gap:10px}
+.gsearch .box:focus-within{box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 14%,transparent)}
+.gsearch input{font-size:.94rem}
+.gsearch kbd{min-width:25px;text-align:center;border-radius:7px;padding:3px 8px}
+.gres{top:56px;padding:10px;max-height:min(72vh,620px);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.gres h4{padding:13px 12px 6px;color:var(--accent);font-size:.68rem;letter-spacing:.09em}
+.gres .none{display:flex;flex-direction:column;align-items:center;gap:6px;padding:22px 14px}
+.gres .none>span,.gintro>span{font-size:.82rem;color:var(--muted)}
+.gintro{padding:14px 12px 8px;display:flex;flex-direction:column;gap:4px}
+.gquick{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:8px 10px 12px}
+.gquick>span{width:100%;font-size:.72rem;color:var(--muted);padding:0 2px 2px}
+.gquick button{border:1px solid var(--line);border-radius:999px;background:var(--surface-2);color:var(--ink);padding:7px 11px;font-size:.78rem;cursor:pointer;transition:.15s ease}
+.gquick button:hover,.gquick button:focus-visible{border-color:var(--accent);color:var(--accent);outline:none}
+.bot-h>div:nth-child(2) span{max-width:260px}
+.bot-opts .chip{border-color:color-mix(in srgb,var(--accent) 35%,var(--line));background:color-mix(in srgb,var(--accent) 8%,var(--surface));}
+.bot-opts .chip:hover{border-color:var(--accent);color:var(--accent)}
+@media(max-width:700px){.gsearch{max-width:none}.gres{left:-50px;right:-48px}.gquick button{font-size:.74rem}.bot-h>div:nth-child(2) span{max-width:165px}}

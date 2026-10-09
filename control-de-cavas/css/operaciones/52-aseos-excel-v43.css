@@ -1,0 +1,65 @@
+/* Aseos v43 — hoja de trabajo tipo Excel, sin alterar el resto de la interfaz */
+.aseo-excel-workspace{max-width:1480px;padding-top:12px}
+.aseo-excel-workspace .aseo-heading{display:flex;justify-content:space-between;align-items:end;gap:24px;margin:14px 0 22px}
+.aseo-excel-workspace .aseo-heading h1{font-size:clamp(32px,4vw,48px);margin:8px 0 5px;letter-spacing:-.045em;color:var(--studio-ink)}
+.aseo-excel-workspace .aseo-heading p{margin:0;font-size:14px;color:var(--studio-muted);max-width:620px}
+.aseo-excel-workspace .aseo-heading .studio-actions{justify-content:flex-end;gap:8px}
+.aseo-excel-workspace .studio-actions .btn{font-size:12px;padding:10px 13px;white-space:nowrap}
+.aseo-excel-workspace .aseo-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0 22px}
+.aseo-excel-workspace .aseo-stats>div{background:var(--studio-surface);border:1px solid var(--studio-border);border-radius:17px;padding:17px 20px;min-width:0}
+.aseo-excel-workspace .aseo-stats span{display:block;color:var(--studio-muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aseo-excel-workspace .aseo-stats strong{display:block;margin-top:7px;color:var(--studio-ink);font-size:26px;font-weight:650;letter-spacing:-.04em}
+.aseo-excel-workspace .aseo-nav-label{font-size:12px;font-weight:650;color:var(--studio-muted);margin-bottom:9px}
+.aseo-excel-workspace .aseo-modules{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;margin:0 0 18px;padding:2px 0 10px;scrollbar-width:thin}
+.aseo-excel-workspace .aseo-modules button{flex:0 0 auto;width:auto;min-width:0;padding:9px 15px;border-radius:999px;background:var(--studio-surface);border:1px solid var(--studio-border);font-size:12px;font-weight:550;white-space:nowrap;color:var(--studio-ink)}
+.aseo-excel-workspace .aseo-modules button[aria-pressed=true]{background:var(--studio-ink);color:var(--studio-surface);border-color:var(--studio-ink);box-shadow:none}
+.aseo-excel-workspace .aseo-table-section{padding:0;overflow:hidden;border-radius:20px;margin:0 0 18px}
+.aseo-excel-workspace .aseo-table-top{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:20px 22px 14px}
+.aseo-excel-workspace .aseo-table-top h2{margin:0;font-size:20px;font-weight:650;letter-spacing:-.025em}
+.aseo-excel-workspace .aseo-table-top span{font-size:12px;color:var(--studio-muted)}
+.aseo-excel-workspace .aseo-view-actions{display:inline-flex;gap:3px;background:var(--studio-soft);padding:4px;border:1px solid var(--studio-border);border-radius:12px;flex-wrap:wrap}
+.aseo-excel-workspace .aseo-view-btn{border:0;background:transparent;border-radius:9px;color:var(--studio-muted);padding:8px 12px;font-size:12px;cursor:pointer}
+.aseo-excel-workspace .aseo-view-btn[aria-pressed=true]{background:var(--studio-surface);color:var(--studio-ink);box-shadow:0 1px 5px #00000012;font-weight:650}
+.aseo-excel-workspace .aseo-toolbar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;padding:0 22px 16px}
+.aseo-excel-workspace .aseo-toolbar label{display:block}
+.aseo-excel-workspace .aseo-toolbar .aseo-search-label{flex:1 1 260px;min-width:200px}
+.aseo-excel-workspace .aseo-toolbar input,.aseo-excel-workspace .aseo-toolbar select{height:39px;width:100%;font:inherit;font-size:12px;color:var(--studio-ink);background:var(--studio-soft);border:1px solid var(--studio-border);border-radius:10px;padding:0 12px;outline-offset:2px}
+.aseo-excel-workspace .aseo-toolbar input:focus,.aseo-excel-workspace .aseo-toolbar select:focus{outline:2px solid var(--accent,#007aff)}
+.aseo-excel-workspace .aseo-toolbar select{width:auto;min-width:120px;max-width:210px;cursor:pointer}
+.aseo-excel-workspace .aseo-sheet-scroll{overflow:auto;max-height:66vh;scrollbar-width:thin;border-top:1px solid var(--studio-border)}
+.aseo-excel-workspace .aseo-sheet{border-collapse:separate;border-spacing:0;width:100%;min-width:1080px;font-size:12px;color:var(--studio-ink)}
+.aseo-excel-workspace .aseo-sheet thead th{position:sticky;top:0;z-index:2;text-align:left;white-space:nowrap;background:var(--studio-soft);color:var(--studio-muted);font-size:11px;font-weight:650;padding:13px 12px;border-bottom:1px solid var(--studio-border)}
+.aseo-excel-workspace .aseo-sheet td{padding:11px 12px;border-bottom:1px solid var(--studio-border);white-space:nowrap;vertical-align:middle;max-width:280px;overflow:hidden;text-overflow:ellipsis}
+.aseo-excel-workspace .aseo-sheet tbody tr:hover td{background:var(--studio-soft)}
+.aseo-excel-workspace .aseo-sheet th:first-child,.aseo-excel-workspace .aseo-sheet td:first-child{position:sticky;left:0;z-index:1;background:var(--studio-surface)}
+.aseo-excel-workspace .aseo-sheet thead th:first-child{z-index:3;background:var(--studio-soft)}
+.aseo-excel-workspace .aseo-sheet-id{color:var(--studio-muted);font-variant-numeric:tabular-nums}
+.aseo-excel-workspace .aseo-sheet-equipment{font-weight:600}
+.aseo-excel-workspace .aseo-state{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:999px;background:var(--studio-soft);color:var(--studio-ink);font-size:11px;font-weight:600;white-space:nowrap}
+.aseo-excel-workspace .aseo-state:before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+.aseo-excel-workspace .aseo-state-finalizados{color:#247a4b;background:#eaf7ee}
+.aseo-excel-workspace .aseo-state-encurso{color:#1c62bd;background:#e8f2ff}
+.aseo-excel-workspace .aseo-state-pendientes{color:#9d620c;background:#fff5e6}
+.aseo-excel-workspace .aseo-state-borradores{color:#865bb6;background:#f2edfc}
+.aseo-excel-workspace .aseo-source{color:var(--studio-muted);font-size:11px}
+.aseo-excel-workspace .aseo-row-actions{display:flex;gap:6px;align-items:center}
+.aseo-excel-workspace .aseo-action{font:inherit;font-size:11px;font-weight:650;cursor:pointer;border:1px solid var(--studio-border);border-radius:8px;background:var(--studio-surface);color:var(--studio-ink);padding:7px 10px}
+.aseo-excel-workspace .aseo-action:hover{background:var(--studio-soft)}
+.aseo-excel-workspace .aseo-action:disabled{opacity:.4;cursor:not-allowed}
+.aseo-excel-workspace .aseo-action-secondary{font-weight:450;color:var(--studio-muted)}
+.aseo-excel-workspace .aseo-empty{text-align:center;padding:40px!important;color:var(--studio-muted)}
+.aseo-excel-workspace .aseo-hint{font-size:11px;color:var(--studio-muted);margin:10px 22px 0}
+.aseo-excel-workspace .aseo-pagination{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:15px 22px;border-top:1px solid var(--studio-border);color:var(--studio-muted);font-size:12px}
+.aseo-excel-workspace .aseo-pagination>div{display:flex;align-items:center;gap:10px}
+.aseo-excel-workspace .aseo-pagination .btn{padding:7px 12px;font-size:11px}
+.aseo-excel-workspace .aseo-draft-state{margin:0 22px 12px;font-size:12px;color:var(--studio-muted)}
+.aseo-excel-workspace .aseo-period-picker{padding:12px 22px;border-top:1px solid var(--studio-border)}
+.aseo-excel-workspace .aseo-period-picker select{margin-left:10px;padding:8px 10px;border:1px solid var(--studio-border);border-radius:9px;background:var(--studio-surface);color:var(--studio-ink);font:inherit}
+.aseo-excel-workspace .aseo-inline-help{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:15px 22px;border-top:1px solid var(--studio-border);font-size:12px;color:var(--studio-muted)}
+.aseo-excel-workspace .aseo-grid-scroll{border-radius:0;border-left:0;border-right:0}
+.aseo-excel-workspace .aseo-help-details{border:1px solid var(--studio-border);border-radius:15px;padding:16px 20px;color:var(--studio-muted);font-size:12px}
+.aseo-excel-workspace .aseo-help-details summary{cursor:pointer;color:var(--studio-ink);font-weight:600}
+.aseo-excel-workspace .aseo-help-details p{line-height:1.6}
+@media (prefers-color-scheme:dark){body:not([data-theme="light"]) .aseo-excel-workspace .aseo-state-finalizados{color:#9be5b7;background:#183d2b}body:not([data-theme="light"]) .aseo-excel-workspace .aseo-state-encurso{color:#a5caff;background:#18334e}body:not([data-theme="light"]) .aseo-excel-workspace .aseo-state-pendientes{color:#f2cc91;background:#48351d}body:not([data-theme="light"]) .aseo-excel-workspace .aseo-state-borradores{color:#d6b8ff;background:#3c2b52}}
+@media(max-width:900px){.aseo-excel-workspace .aseo-heading{display:block}.aseo-excel-workspace .aseo-heading .studio-actions{justify-content:flex-start;margin-top:18px}.aseo-excel-workspace .aseo-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.aseo-excel-workspace .aseo-table-top{flex-wrap:wrap}}
+@media(max-width:600px){.aseo-excel-workspace .aseo-stats>div{padding:13px}.aseo-excel-workspace .aseo-table-top,.aseo-excel-workspace .aseo-toolbar,.aseo-excel-workspace .aseo-pagination{padding-left:14px;padding-right:14px}.aseo-excel-workspace .aseo-pagination{flex-wrap:wrap}}

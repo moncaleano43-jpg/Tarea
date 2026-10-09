@@ -1,0 +1,7 @@
+/* Análisis · pestaña «Dónde actuar» */
+.an-plan-l{list-style:none;margin:0;padding:0;display:grid;gap:12px;counter-reset:plan}
+.an-plan-l li{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;counter-increment:plan}
+.an-plan-l li p{margin:2px 0 0;color:var(--muted);font-size:13px;line-height:1.45}
+.an-plan-l li b{font-size:14px;color:var(--ink)}
+.an-plan-tag{font:600 11px var(--sans);letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2);margin-top:1px}
+.an-plan-tag.agua{color:var(--est,#5d6f8c)}

@@ -1,0 +1,159 @@
+
+/* ============================================================
+   TANQUES · lista Apple
+   ============================================================ */
+.tanques-v2 .tank-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.tanques-v2 .tank-card{
+  display:grid;
+  grid-template-columns:58px minmax(170px,1.1fr) minmax(170px,1fr) minmax(250px,1.45fr) auto;
+  align-items:center;
+  gap:18px;
+  min-height:104px;
+  padding:16px 18px 16px 20px;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:19px;
+  position:relative;
+  overflow:hidden;
+  transition:transform .18s ease,border-color .18s ease,background-color .18s ease;
+}
+.tanques-v2 .tank-card::before{
+  content:"";
+  position:absolute;
+  left:0;top:0;bottom:0;width:3px;
+  background:var(--tank-color,var(--line));
+}
+.tanques-v2 .tank-card:hover{
+  transform:translateY(-1px);
+  background:color-mix(in srgb,var(--surface) 94%,#fff 6%);
+  border-color:color-mix(in srgb,var(--line) 65%,#fff 35%);
+}
+.tanques-v2 .tank-fv a{
+  color:var(--accent);
+  font-size:1.02rem;
+  font-weight:700;
+  text-decoration:none;
+}
+.tanques-v2 .tank-lote b{
+  display:block;
+  font-size:1rem;
+}
+.tanques-v2 .tank-lote span,
+.tanques-v2 .tank-lev span,
+.tanques-v2 .tank-t0 small{
+  color:var(--muted);
+  font-size:.78rem;
+}
+.tanques-v2 .tank-lote span{
+  display:block;
+  margin-top:4px;
+}
+.tanques-v2 .tank-lev b{
+  font-size:.94rem;
+}
+.tanques-v2 .tank-lev .gen{
+  color:var(--muted);
+  font-size:.8rem;
+  margin-left:4px;
+}
+.tanques-v2 .tank-t0{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.tanques-v2 .tank-t0 strong{
+  font-size:.96rem;
+}
+.tanques-v2 .tank-t0 small{
+  display:block;
+}
+.tanques-v2 .tank-status{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:7px;
+}
+.tanques-v2 .tank-status small{
+  color:var(--muted);
+  font-size:.75rem;
+}
+.tanques-v2 .tank-status small.past{color:#FF453A}
+.tanques-v2 .tank-action .btn{
+  min-width:92px;
+  border-radius:999px;
+}
+.tanques-v2 .tank-free{
+  grid-template-columns:58px 1fr auto;
+  min-height:78px;
+  color:var(--muted);
+}
+.tanques-v2 .tank-free .tank-action{
+  grid-column:auto;
+}
+.tanques-v2 .tank-free .tank-action .btn{
+  min-width:105px;
+}
+.tanques-v2 .tank-empty{
+  padding:28px;
+  border-radius:20px;
+  border:1px solid var(--line);
+  background:var(--surface);
+  text-align:center;
+}
+.tanques-v2 .tank-table-head{
+  display:grid;
+  grid-template-columns:58px minmax(170px,1.1fr) minmax(170px,1fr) minmax(250px,1.45fr) auto;
+  gap:18px;
+  padding:0 20px 8px;
+  color:var(--muted);
+  font-size:.68rem;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+.tanques-v2 .tank-table-head span:nth-child(5){text-align:right}
+.tanques-v2 .tank-filter-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  overflow:auto;
+  padding-bottom:2px;
+}
+.tanques-v2 .tank-toolbar{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin:14px 0 18px;
+}
+.tanques-v2 .tank-toolbar .search-in{
+  max-width:430px;
+  flex:1;
+}
+@media(max-width:1050px){
+  .tanques-v2 .tank-card{
+    grid-template-columns:58px minmax(150px,1fr) minmax(190px,1.2fr) auto;
+  }
+  .tanques-v2 .tank-lev{display:none}
+  .tanques-v2 .tank-table-head{
+    grid-template-columns:58px minmax(150px,1fr) minmax(190px,1.2fr) auto;
+  }
+  .tanques-v2 .tank-table-head span:nth-child(4){display:none}
+}
+@media(max-width:700px){
+  .tanques-v2 .tank-card{
+    grid-template-columns:52px minmax(0,1fr) auto;
+    gap:10px;
+    padding:15px;
+  }
+  .tanques-v2 .tank-lote{grid-column:2}
+  .tanques-v2 .tank-lev{display:block;grid-column:2}
+  .tanques-v2 .tank-t0{grid-column:2}
+  .tanques-v2 .tank-status{grid-column:3;grid-row:1 / span 4}
+  .tanques-v2 .tank-action{grid-column:3;grid-row:5}
+  .tanques-v2 .tank-table-head{display:none}
+  .tanques-v2 .tank-toolbar{align-items:stretch;flex-direction:column}
+  .tanques-v2 .tank-toolbar .search-in{max-width:none}
+}

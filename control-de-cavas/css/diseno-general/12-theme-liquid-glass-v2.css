@@ -1,0 +1,77 @@
+
+/* ===== THEME SYSTEM V2 · Dark + Light + restrained Liquid Glass ===== */
+:root{
+  color-scheme:dark;
+  --bg:#000000; --surface:#1c1c1e; --surface-2:#232326; --sunken:#303034;
+  --ink:#f5f5f7; --ink-2:#e8e8ed; --muted:#98989d; --faint:#636366;
+  --line:rgba(255,255,255,.12); --line-2:rgba(255,255,255,.075);
+  --glass:rgba(28,28,30,.78); --glass-strong:rgba(34,34,37,.9);
+  --glass-border:rgba(255,255,255,.13); --glass-hi:rgba(255,255,255,.08);
+  --glass-shadow:0 12px 35px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.06);
+  --glass-shadow-hover:0 18px 45px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.09);
+  --side-bg:rgba(24,24,26,.84); --side-ink:#f5f5f7; --side-muted:#98989d;
+}
+:root[data-theme="light"]{
+  color-scheme:light;
+  --bg:#f2f2f7; --surface:#ffffff; --surface-2:#f8f8fa; --sunken:#e5e5ea;
+  --ink:#1d1d1f; --ink-2:#2c2c2e; --muted:#6e6e73; --faint:#aeaeb2;
+  --line:rgba(0,0,0,.09); --line-2:rgba(0,0,0,.055);
+  --glass:rgba(255,255,255,.78); --glass-strong:rgba(255,255,255,.93);
+  --glass-border:rgba(0,0,0,.085); --glass-hi:rgba(255,255,255,.82);
+  --glass-shadow:0 10px 30px rgba(0,0,0,.07), inset 0 1px 0 rgba(255,255,255,.9);
+  --glass-shadow-hover:0 16px 40px rgba(0,0,0,.11), inset 0 1px 0 rgba(255,255,255,1);
+  --side-bg:rgba(250,250,252,.88); --side-ink:#1d1d1f; --side-muted:#6e6e73;
+}
+html,body{background:var(--bg)!important;color:var(--ink)!important}
+body{
+  background:radial-gradient(800px 450px at 8% -10%,color-mix(in srgb,var(--accent) 7%,transparent),transparent 68%),
+             radial-gradient(700px 450px at 100% 0%,color-mix(in srgb,#5856d6 5%,transparent),transparent 70%),var(--bg)!important;
+}
+/* Material: use glass where it helps, solid surfaces where readability matters. */
+.side,.topbar,.card,.tcard,.ccard,.posx,.lev-card,.lev-priority-card,.lev-priority-item,.kpi,.qa,.history-card,.attention-card,.home-panel,.collector-panel,.collector-detail,.collector-time-hero,.ycard,.cpanel,dialog{
+  background:var(--glass)!important;color:var(--ink)!important;border-color:var(--glass-border)!important;
+  box-shadow:var(--glass-shadow);backdrop-filter:blur(18px) saturate(150%);-webkit-backdrop-filter:blur(18px) saturate(150%);
+}
+.side{background:var(--side-bg)!important;border-right:1px solid var(--glass-border)!important;box-shadow:8px 0 32px rgba(0,0,0,.08)!important}
+.topbar{background:color-mix(in srgb,var(--bg) 72%,transparent)!important;border-bottom:1px solid var(--glass-border)!important;box-shadow:0 8px 24px rgba(0,0,0,.06)!important}
+.brand b,.nav a,.nav a:hover,.nav a[aria-current="page"],.content h1,.content h2,.content h3,.content h4,.card b,.tcard b,.ccard b,.kpi b,.attention-card b{color:var(--ink)!important}
+.brand span,.side-foot,.nav-g,.muted,.sub,.hint,.content p{color:var(--muted)!important}
+.nav a:hover,.nav a[aria-current="page"]{background:color-mix(in srgb,var(--ink) 7%,transparent)!important}
+/* Legacy fixed white/black text: make the common components theme aware. */
+.tanques-v2 .tank-card{background:var(--glass)!important;border-color:var(--glass-border)!important;box-shadow:var(--glass-shadow)!important;color:var(--ink)!important}
+.tanques-v2 .tank-card:hover{background:var(--glass-strong)!important;box-shadow:var(--glass-shadow-hover)!important}
+.tanques-v2 .tank-top,.tanques-v2 .tank-middle,.tanques-v2 .tank-info+ .tank-info{border-color:var(--line)!important}
+.tanques-v2 .tank-lote b,.tanques-v2 .tank-fv,.tanques-v2 .tank-info b,.tanques-v2 .tank-info small,.tanques-v2 .tank-status small{color:var(--ink)!important}
+.tanques-v2 .tank-info .label{color:var(--muted)!important}
+/* Home / KPI readability */
+.home-panel,.attention-card,.collector-panel,.kpi,.qa{color:var(--ink)!important}
+.home-panel *, .attention-card *, .collector-panel *, .kpi *, .qa *{color:inherit}
+.attention-card .muted,.attention-card small,.collector-panel small,.kpi small,.qa small{color:var(--muted)!important}
+/* Avoid the washed-out light cards from the previous version. */
+:root[data-theme="light"] .attention-card,.root[data-theme="light"] .attention-card{background:rgba(255,255,255,.92)!important}
+:root[data-theme="light"] .collector-panel{background:rgba(255,255,255,.94)!important}
+:root[data-theme="light"] .kpi{background:rgba(255,255,255,.9)!important}
+/* Inputs */
+input,select,textarea{background:color-mix(in srgb,var(--surface) 88%,transparent)!important;color:var(--ink)!important;border-color:var(--line)!important}
+input::placeholder,textarea::placeholder{color:var(--muted)!important}
+.gsearch,.gsearch .box{color:var(--ink)!important}
+.gsearch .box{background:color-mix(in srgb,var(--surface) 88%,transparent)!important;border-color:var(--line)!important}
+.gsearch input{background:transparent!important}
+.btn:not(.pri):not(.dan),.theme-btn{background:color-mix(in srgb,var(--surface) 86%,transparent)!important;color:var(--ink)!important;border-color:var(--line)!important}
+.btn:not(.pri):not(.dan):hover,.theme-btn:hover{background:color-mix(in srgb,var(--ink) 7%,var(--surface))!important}
+.btn.pri{color:#fff!important}
+/* Glass controls */
+.theme-btn{border:1px solid var(--glass-border)!important;box-shadow:var(--glass-shadow)!important;backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%)}
+.side-theme-control{width:calc(100% - 16px);margin:8px 8px 10px;min-height:40px;display:flex;align-items:center;gap:9px;padding:0 12px;border-radius:12px;border:1px solid var(--glass-border);background:var(--glass)!important;color:var(--side-ink)!important;font:inherit;font-size:.82rem;cursor:pointer;text-align:left}
+/* Modals */
+dialog{background:var(--glass-strong)!important;color:var(--ink)!important;border:1px solid var(--glass-border)!important}
+dialog::backdrop{background:rgba(0,0,0,.42)!important;backdrop-filter:blur(5px)}
+.dlg>footer{background:color-mix(in srgb,var(--surface) 84%,transparent)!important;border-color:var(--line)!important}
+/* Status pills retain semantic colors, never white-on-white. */
+.badge,.pill,.status,.cnt{color:inherit}
+/* Colectors: glass shell, readable inner content */
+.ccard{background:var(--glass)!important}
+.ccard .cn,.ccard .ccard-fill-label,.ccard strong{color:var(--ink)!important}
+/* Transition */
+html.theme-anim *,html.theme-anim{transition:background-color .22s ease,color .22s ease,border-color .22s ease,box-shadow .22s ease!important}
+@media(prefers-reduced-motion:reduce){html.theme-anim *,html.theme-anim{transition:none!important}}

@@ -1,0 +1,94 @@
+
+/* ============================================================
+   MICROINTERACCIONES · estilo Apple
+   ============================================================ */
+@media (prefers-reduced-motion:no-preference){
+  /* Entrada suave de la vista */
+  #view > *{
+    animation:viewIn .24s cubic-bezier(.22,.61,.36,1) both;
+  }
+  @keyframes viewIn{
+    from{opacity:0;transform:translateY(6px)}
+    to{opacity:1;transform:none}
+  }
+
+  /* Tanques: entrada escalonada */
+  .tanques-v2 .tank-card{
+    animation:tankIn .34s cubic-bezier(.22,.61,.36,1) both;
+  }
+  .tanques-v2 .tank-card:nth-child(1){animation-delay:.02s}
+  .tanques-v2 .tank-card:nth-child(2){animation-delay:.045s}
+  .tanques-v2 .tank-card:nth-child(3){animation-delay:.07s}
+  .tanques-v2 .tank-card:nth-child(4){animation-delay:.095s}
+  .tanques-v2 .tank-card:nth-child(5){animation-delay:.12s}
+  .tanques-v2 .tank-card:nth-child(6){animation-delay:.145s}
+  .tanques-v2 .tank-card:nth-child(7){animation-delay:.17s}
+  .tanques-v2 .tank-card:nth-child(n+8){animation-delay:.19s}
+  @keyframes tankIn{
+    from{opacity:0;transform:translateY(7px) scale(.995)}
+    to{opacity:1;transform:none}
+  }
+
+  /* Colectores */
+  .home-v2 .collector-panel{
+    animation:panelIn .35s cubic-bezier(.22,.61,.36,1) both;
+  }
+  .home-v2 .collector-grid .cmini{
+    animation:collectorIn .3s cubic-bezier(.22,.61,.36,1) both;
+  }
+  .home-v2 .collector-grid .cmini:nth-child(1){animation-delay:.04s}
+  .home-v2 .collector-grid .cmini:nth-child(2){animation-delay:.08s}
+  .home-v2 .collector-grid .cmini:nth-child(3){animation-delay:.12s}
+  .home-v2 .collector-grid .cmini:nth-child(4){animation-delay:.16s}
+  .home-v2 .collector-grid .cmini:nth-child(5){animation-delay:.20s}
+  .home-v2 .collector-grid .cmini:nth-child(6){animation-delay:.24s}
+  @keyframes panelIn{
+    from{opacity:0;transform:translateY(5px)}
+    to{opacity:1;transform:none}
+  }
+  @keyframes collectorIn{
+    from{opacity:0;transform:translateY(5px) scale(.985)}
+    to{opacity:1;transform:none}
+  }
+
+  /* Estados: solo el indicador, nunca toda la tarjeta */
+  .tank-card[style*="var(--st-vencida)"]::before{
+    animation:priorityPulse 2.6s ease-in-out infinite;
+  }
+  @keyframes priorityPulse{
+    0%,100%{opacity:.65}
+    50%{opacity:1}
+  }
+
+  /* Botones y navegación */
+  .btn,.chip,.cmini,.nav a,.topbar .menu-btn{
+    transition:transform .16s ease,background-color .18s ease,
+               border-color .18s ease,box-shadow .18s ease,opacity .18s ease;
+  }
+  .btn:hover,.chip:hover{
+    transform:translateY(-1px);
+  }
+  .btn:active,.chip:active,.cmini:active{
+    transform:scale(.975);
+  }
+  .nav a:active{transform:scale(.985)}
+}
+
+/* Animación del punto de estado en etiquetas */
+.status-dot{
+  animation:statusBreath 2.8s ease-in-out infinite;
+}
+@keyframes statusBreath{
+  0%,100%{opacity:.72}
+  50%{opacity:1}
+}
+
+/* El usuario puede desactivar cualquier movimiento */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms !important;
+    animation-iteration-count:1 !important;
+    scroll-behavior:auto !important;
+    transition-duration:.01ms !important;
+  }
+}

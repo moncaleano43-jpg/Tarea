@@ -1,0 +1,174 @@
+
+/* ============================================================
+   acciones-tanque.js
+   ============================================================ */
+App.Act = App.Act || {};
+(function(){
+  const {esc,f,fmt,fmtS,pc,num,toIn,parseDT,HOUR,toast,clone,dur,countdown} = App.U;
+  const loteNum = l => parseInt(String(l||"").replace(/\D/g,""),10)||0;
+  App.pendientes = () => Object.values(App.S.tanques).filter(t=>!(t.retiro&&t.retiro.fecha));
+  App.tanquesActivos = () => Object.values(App.S.tanques).filter(t=>!(t.mesCerrado===true || t.estadoMES==="CERRADO"));
+  App.colorSt = c => ({ok:"var(--st-lista)",prox:"var(--st-prox)",att:"var(--st-vence)",crit:"var(--st-vencida)",none:"var(--st-espera)"}[c]);
+  App.Act.crear = function(colPre,tqPre){
+    if(!App.Store.canWrite){ toast("Modo de solo lectura."); return; }
+    const ocup=new Set(Object.values(App.S.tanques||{}).filter(t=>!(t.retiro&&t.retiro.fecha)).map(t=>Number(t.tq)).filter(Number.isFinite));
+    const libres=[]; for(let i=1;i<=32;i++) if(!ocup.has(i)) libres.push(i);
+    let maxL=0; Object.values(App.S.tanques).forEach(t=>{ maxL=Math.max(maxL,loteNum(t.lote)); }); 
+    const cols=Object.entries(App.S.colectores).sort((a,b)=>a[0].localeCompare(b[0]));
+    const body=`<fieldset><legend>Datos del tanque</legend><div class="fg">
+      <label class="f req"><span>Número de tanque</span><select name="tq" required><option value=""></option>${libres.map(i=>`<option ${+tqPre===i?"selected":""}>${i}</option>`).join("")}</select></label>
+      <label class="f req"><span>Marca</span><select name="marca" required><option value=""></option>${App.MARCAS.map(m=>`<option>${m}</option>`).join("")}</select></label>
+      <label class="f req"><span>Fecha y hora de fin de llenado</span><input name="fin" type="datetime-local" required value="${toIn(new Date())}"></label>
+      <label class="f"><span>Lote</span><input name="lote" value="F${maxL+1}" style="text-transform:uppercase"></label></div></fieldset>
+      <fieldset><legend>Levadura sembrada</legend>
+      <div class="seg" role="radiogroup" aria-label="Origen de la levadura" style="margin-bottom:12px"><label><input type="radio" name="modo" value="colector" checked> De un colector</label><label><input type="radio" name="modo" value="manual"> Levadura nueva</label><label><input type="radio" name="modo" value="despues"> Registrar después</label></div>
+      <div data-m="colector">${cols.length?`<div class="fg"><label class="f" style="grid-column:1/-1"><span>Levadura disponible en colectores</span><select name="colId"><option value=""></option>${cols.map(([id,c])=>{ const st=App.Calc.estadoColector(c); return `<option value="${id}" ${colPre===id?"selected":""}>C${id.slice(1).replace("-","-P")}: ${esc(c.nombre)} · gen ${c.generacion??"?"} · ${f(num(c.vol),0)} Hl · viab ${pc(c.viab)} · ${st.txt}</option>`; }).join("")}</select></label>
+        <label class="f"><span>Hl sembrados (opcional)</span><input name="hl" type="number" step="any" placeholder="se descuenta del colector"></label></div>`:`<p class="muted">No hay levaduras en los colectores. Escríbala a mano.</p>`}</div>
+      <div data-m="manual" class="hidden"><div class="fg">
+        <label class="f"><span>Nombre de la levadura</span><input name="mNombre" style="text-transform:uppercase" placeholder="Ej.: EJ10F21 o nombre de propagación"></label>
+        <label class="f"><span>Origen</span><select name="mOrigen"><option value="propagador">Propagador (levadura nueva)</option><option value="otro">Otro</option></select></label>
+        <label class="f"><span>Generación</span><input name="mGen" type="number" step="1"></label>
+        <label class="f"><span>Viabilidad (%)</span><input name="mViab" type="number" step="any"></label>
+        <label class="f"><span>Consistencia (%)</span><input name="mCons" type="number" step="any"></label>
+        <label class="f"><span>pH</span><input name="mPh" type="number" step="any"></label></div>
+        <p class="small muted">Si viene de propagador arranca en generación 1: el nombre de la cosecha será inicial de la marca + las dos primeras letras + 1 + F + tanque.</p></div>
+      <div id="prevNombre" class="infobox hidden"></div></fieldset>
+      <p class="small muted">Extracto original, extracto límite y muestras se registran después, al seleccionar el tanque.</p>`;
+    App.UI.modal("Registrar tanque",body,{wide:true,ok:"Crear tanque",
+      onOpen(fm){
+        const upd=()=>{ const m=fm.querySelector("[name=modo]:checked").value; fm.querySelectorAll("[data-m]").forEach(x=>x.classList.toggle("hidden",x.dataset.m!==m));
+          const t=leer(fm,true), n=t&&App.Calc.nombreCosecha(t), p=fm.querySelector("#prevNombre");
+          p.classList.toggle("hidden",!n); if(n) p.innerHTML=`La levadura que se cosechará de este tanque se llamará <b>${esc(n)}</b>.`; };
+        fm.addEventListener("change",upd); fm.addEventListener("input",upd); upd();
+      },
+      async onSubmit(fm,showErr){
+        const t=leer(fm); if(typeof t==="string"){ showErr(t); return false; }
+        if(App.S.tanques[t.lote]&&!(App.S.tanques[t.lote].retiro||{}).fecha){ showErr("Ya existe el lote "+t.lote+"."); return false; }
+        if(App.tanquesActivos().some(x=>+x.tq===+t.tq)){ showErr("FV "+t.tq+" todavía está abierto. El tanque queda abierto hasta que MES Core lo cierre."); return false; }
+        if(t.tq<1||t.tq>32){ showErr("El tanque debe estar entre FV 1 y FV 32."); return false; }
+        t.creado=new Date().toISOString();
+        if(!await App.Store.set("tanques",t.lote,t)) return false;
+        if(t.levadura&&t.levadura.colectorId) await sembrarDesdeColector(t, num(App.UI.val(fm,"hl","n")));
+        toast("FV "+t.tq+" registrado"); App.go("tanque/"+t.lote); return true;
+      }});
+  };
+  function leer(fm,preview){
+    const V=(n,t)=>App.UI.val(fm,n,t), t={tq:num(V("tq")),marca:V("marca"),fin:V("fin"),lote:(V("lote")||"").toUpperCase(),muestras:[]};
+    if(!preview){ if(!t.tq) return "Escoja el número de tanque."; if(!t.marca) return "Escoja la marca."; if(!t.fin) return "Indique la fecha y hora de fin de llenado."; if(!t.lote) return "Indique el lote."; }
+    const m=fm.querySelector("[name=modo]:checked").value;
+    if(m==="colector"){ const id=V("colId"); if(id){ const c=App.S.colectores[id]; t.levadura={nombre:c.nombre,generacion:c.generacion,origen:"colector",colectorId:id,colector:id.slice(1).split("-")[0],levId:c.levId,viab:c.viab,cons:c.cons,ph:c.ph}; } }
+    if(m==="manual"){ const nombre=(V("mNombre")||"").toUpperCase(); if(nombre){ const p=App.Calc.parseLev(nombre); t.levadura={nombre,origen:V("mOrigen"),generacion:V("mGen","n")??(V("mOrigen")==="propagador"?0:(p?p.gen:null)),viab:V("mViab","pct"),cons:V("mCons","pct"),ph:V("mPh","n")}; } else if(!preview) return "Escriba el nombre de la levadura o elija otra opción."; }
+    if(t.levadura) Object.keys(t.levadura).forEach(k=>t.levadura[k]==null&&delete t.levadura[k]);
+    return t;
+  }
+  async function sembrarDesdeColector(t,hl){
+    const id=t.levadura.colectorId, c=clone(App.S.colectores[id]); if(!c) return;
+    if(c.levId&&App.S.bdlev[c.levId]){ const b=clone(App.S.bdlev[c.levId]); b.siembras=(b.siembras||[]).concat([{tq:String(t.tq),lote:t.lote,fecha:t.fin,hl:hl,colector:id}]);
+      if(hl!=null&&c.vol!=null&&c.vol-hl<=0) b.salidas=(b.salidas||[]).concat([{colector:id,fecha:new Date().toISOString(),motivo:"Sembrada (volumen agotado)",tq:t.tq}]);
+      await App.Store.set("bdlev",c.levId,b); }
+    if(hl!=null&&c.vol!=null){ c.vol=Math.round((c.vol-hl)*100)/100;
+      if(c.vol<=0){ await App.Act.archivarPosicion(id,c,"Sembrada (volumen agotado) en FV "+t.tq); await App.Store.del("colectores",id); toast("Posición "+id.slice(1).replace("-","-P")+" vacía: queda disponible"); return; }
+      await App.Store.set("colectores",id,c); }
+  }
+  async function agregarMuestra(lote){
+    if(!App.Store.canWrite){ toast("Modo de solo lectura."); return; }
+    const t=App.S.tanques[lote], r=App.Calc.tanque(t);
+    App.UI.modal("Agregar muestra, FV "+t.tq,`<p class="small muted" style="margin:0 0 12px">${esc(t.marca)} · Lote ${esc(t.lote)}${r.ext!=null?` · Último extracto <b>${f(r.ext)} °P</b>`:""}${r.e75!=null&&r.h75==null?` · Meta 75 %: <b>${f(r.e75)} °P</b>`:""}</p>
+      <div class="fg"><label class="f req" style="grid-column:1/-1"><span>Extracto (°P)</span><input name="ext" type="number" step="any" inputmode="decimal" class="big-input" placeholder="0,00" autocomplete="off"></label><label class="f req"><span>Fecha y hora de la muestra</span><input name="t" type="datetime-local" value="${toIn(new Date())}"><span class="row" style="gap:6px"><button type="button" class="chip" data-hoy>Hoy</button><button type="button" class="chip" data-ahora>Ahora</button></span></label><label class="f"><span>Observación (opcional)</span><input name="obs"></label></div><div id="aviso" aria-live="polite"></div>`,{ok:"Guardar muestra",
+      onOpen(fm){ const chk=()=>{ const e=App.UI.val(fm,"ext","n"), d=parseDT(App.UI.val(fm,"t")), w=[];
+          if(e!=null&&r.eo!=null&&e>r.eo) w.push("El extracto es mayor que el extracto original ("+f(r.eo)+" °P).");
+          const prev=r.pts.filter(p=>d&&p.t<d).pop(); if(e!=null&&prev&&e>prev.e+0.3) w.push("El extracto subió respecto a la muestra anterior ("+f(prev.e)+" °P).");
+          if(d&&r.fin&&d<r.fin) w.push("La fecha es anterior al fin de llenado.");
+          if(e!=null&&r.el!=null&&e<r.el-0.3) w.push("El extracto está por debajo del extracto límite ("+f(r.el)+" °P).");
+          fm.querySelector("#aviso").innerHTML=w.length?`<div class="warn"><b>Muestra sospechosa:</b> ${w.map(esc).join(" ")} Revise antes de guardar.</div>`:""; fm.dataset.sosp=w.length?"1":""; };
+        fm.addEventListener("input",chk); setTimeout(()=>fm.elements.ext.focus(),60);
+        fm.querySelector("[data-ahora]").onclick=()=>{ fm.elements.t.value=toIn(new Date()); chk(); };
+        fm.querySelector("[data-hoy]").onclick=()=>{ const v=fm.elements.t.value, d=new Date(); fm.elements.t.value=toIn(d).slice(0,10)+(v?v.slice(10):"T"+String(d.getHours()).padStart(2,"0")+":00"); chk(); }; },
+      async onSubmit(fm,showErr){ const m={t:App.UI.val(fm,"t"),ext:App.UI.val(fm,"ext","n"),obs:App.UI.val(fm,"obs")}; if(!m.t||m.ext==null){ showErr("Indique fecha y extracto."); return false; }
+        if(fm.dataset.sosp==="1"&&!fm.dataset.conf){ fm.dataset.conf="1"; showErr("La muestra parece sospechosa. Si el dato es correcto, presione Guardar otra vez."); return false; }
+        if(!m.obs) delete m.obs; const d=clone(App.S.tanques[lote]); d.muestras=(d.muestras||[]).concat([m]); if(await App.Store.set("tanques",lote,d)) toast("Muestra registrada: "+f(m.ext)+" °P"); }});
+  }
+  async function editarMuestra(lote, idx){
+    if(!App.Store.canWrite){ toast("Modo de solo lectura."); return; }
+    const t=App.S.tanques[lote], m=(t.muestras||[])[idx];
+    if(!m) return;
+    App.UI.modal("Editar muestra · FV "+t.tq,`
+      <div class="fg">
+        <label class="f req" style="grid-column:1/-1"><span>Extracto (°P)</span>
+          <input name="ext" type="number" step="any" inputmode="decimal" class="big-input" value="${m.ext}" autocomplete="off"></label>
+        <label class="f req"><span>Fecha y hora</span>
+          <input name="t" type="datetime-local" value="${m.t}"></label>
+        <label class="f"><span>Observación</span><input name="obs" value="${esc(m.obs||"")}"></label>
+      </div>
+      <div class="infobox small">Al cambiar la fecha o el extracto, la curva, el T0 y la atenuación se recalculan automáticamente.</div>`,
+      {ok:"Guardar cambios",
+       async onSubmit(fm, showErr){
+         const ext = App.UI.val(fm,"ext","n");
+         const fecha = App.UI.val(fm,"t");
+         if(ext==null || !fecha){ showErr("Complete extracto y fecha."); return false; }
+         const d = clone(App.S.tanques[lote]);
+         d.muestras[idx] = Object.assign({}, d.muestras[idx], {ext, t:fecha, obs:App.UI.val(fm,"obs")||undefined});
+         if(await App.Store.set("tanques", lote, d)){ toast("Muestra actualizada"); return true; }
+         return false;
+       }});
+  }
+  async function editar(lote){
+    const t=App.S.tanques[lote];
+    const v=await App.UI.form({title:"Editar datos, FV "+t.tq,values:{marca:t.marca,fin:t.fin,eo:t.eo,eLim:t.eLim,lev:(t.levadura||{}).nombre,gen:(t.levadura||{}).generacion,viab:(t.levadura||{}).viab,origen:(t.levadura||{}).origen},
+      fields:[{k:"marca",l:"Marca",t:"marca",req:true},{k:"fin",l:"Fin de llenado",t:"dt",req:true},{k:"eo",l:"Extracto original (°P)",t:"n"},{k:"eLim",l:"Extracto límite (°P)",t:"n"},
+        {sep:"Levadura sembrada"},{k:"lev",l:"Levadura",t:"t",upper:true},{k:"gen",l:"Generación",t:"n"},{k:"origen",l:"Origen",t:"sel",opts:[["colector","Colector"],["propagador","Propagador"],["otro","Otro"]]},{k:"viab",l:"Viabilidad (%)",t:"pct"}],
+      validate:v=>v.eo!=null&&v.eLim!=null&&v.eLim>=v.eo?"El extracto límite debe ser menor que el original.":null});
+    if(!v) return;
+    const critico=(t.eLim!=null&&v.eLim!==t.eLim)||(t.eo!=null&&v.eo!==t.eo)||(t.fin&&v.fin!==t.fin);
+    if(critico&&!await App.Sec.pin("Modificar extracto original, extracto límite o fin de llenado de FV "+t.tq)) return;
+    const d=clone(t); d.marca=v.marca; d.fin=v.fin; d.eo=v.eo; d.eLim=v.eLim;
+    if(critico) await App.Sec.auditar("Datos de cálculo modificados en FV "+t.tq+" · "+lote,"E.O "+(t.eo??"—")+" · E.lím "+(t.eLim??"—")+" · fin "+(t.fin?fmt(t.fin):"—"),"E.O "+(v.eo??"—")+" · E.lím "+(v.eLim??"—")+" · fin "+(v.fin?fmt(v.fin):"—"));
+    d.levadura=Object.assign({},d.levadura||{},{nombre:v.lev,generacion:v.gen??(App.Calc.parseLev(v.lev)||{}).gen,origen:v.origen||"colector",viab:v.viab}); Object.keys(d.levadura).forEach(k=>d.levadura[k]==null&&delete d.levadura[k]);
+    if(await App.Store.set("tanques",lote,d)) toast("Datos guardados.");
+  }
+  async function horas(lote){
+  const t=App.S.tanques[lote], r=App.Calc.tanque(t);
+  const hayManual = t.h15Man!=null || t.h75Man!=null;
+  const auto = {h15:r.h15auto, h75:r.h75auto};
+  const vals = {h15: t.h15Man ?? null, h75: t.h75Man ?? null};
+  const extraBtn = hayManual
+    ? `<div class="infobox small" style="margin-bottom:14px"><b>Hay ajustes manuales guardados.</b> Si quieres que vuelvan a calcularse solos según las muestras, usa el botón <b>"Usar automáticas"</b>.</div>
+       <div class="row" style="margin-bottom:14px"><button type="button" class="btn" data-auto>⚙️ Usar automáticas (15 % ≈ ${f(auto.h15,1)} h, 75 % ≈ ${f(auto.h75,1)} h)</button></div>`
+    : "";
+  const v = await App.UI.form({
+    title: "Ajustar horas 15 % / 75 %",
+    intro: `Automáticas según las muestras: 15 % ≈ <b>${f(r.h15auto,1)} h</b>, 75 % ≈ <b>${f(r.h75auto,1)} h</b>. Deje vacío para usar la automática.`,
+    extra: extraBtn,
+    values: vals,
+    fields: [
+      {k:"h15", l:"Horas al 15 %", t:"n", ph:"vacío = automática"},
+      {k:"h75", l:"Horas al 75 %", t:"n", ph:"vacío = automática"}
+    ],
+    validate: v => v.h15!=null && v.h75!=null && v.h75<=v.h15 ? "Las horas al 75 % deben ser mayores que al 15 %." : null,
+    onOpen: d => {
+      const btn = d.querySelector("[data-auto]");
+      if(!btn) return;
+      btn.onclick = () => {
+        const fm = d.querySelector("form");
+        fm.elements.h15.value = "";
+        fm.elements.h75.value = "";
+        btn.disabled = true;
+        btn.textContent = "⚙️ Limpiados — presiona Guardar para confirmar";
+      };
+    }
+  });
+  if(!v) return;
+  if(!await App.Sec.pin("Modificar las horas del 15 % / 75 % (cambia el T0) de FV "+t.tq)) return;
+  const d = clone(t); d.h15Man = v.h15; d.h75Man = v.h75;
+  if(d.h15Man==null) delete d.h15Man; if(d.h75Man==null) delete d.h75Man;
+  const t0a = App.Calc.tanque(t).t0; const t0b = App.Calc.tanque(d).t0;
+  if(await App.Store.set("tanques", lote, d)){
+    await App.Sec.auditar("T0 modificado en FV "+t.tq+" · "+lote,(t0a?fmt(t0a):"—")+" (H15 "+(t.h15Man??"auto")+", H75 "+(t.h75Man??"auto")+")",(t0b?fmt(t0b):"—")+" (H15 "+(d.h15Man??"auto")+", H75 "+(d.h75Man??"auto")+")");
+    toast(d.h15Man==null && d.h75Man==null ? "Horas restauradas a automático" : "Horas actualizadas");
+  }
+}
+  function verCalculo(lote){ const r=App.Calc.tanque(App.S.tanques[lote]);
+    App.UI.info("Cálculo del T0",`<dl class="calc">${r.T.pasos.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}<dt>T0 + 12 h (momento ideal)</dt><dd>${fmt(r.mas12)}</dd><dt>T0 + 24 h (máximo)</dt><dd>${fmt(r.venc)}</dd></dl>${r.difExcel!=null?`<div class="infobox">T0 en el Excel: ${fmt(App.S.tanques[lote].excelT0)} (diferencia ${f(r.difExcel,0)} min).</div>`:""}`); }
+  App.Act.agregarMuestra=agregarMuestra; App.Act.editar=editar; App.Act.horas=horas; App.Act.verCalculo=verCalculo; App.Act.eliminar=(l)=>eliminar(l); App.Act.editarMuestra=editarMuestra;
+  async function eliminar(lote){ if(!await App.UI.confirm("Eliminar tanque","Se elimina el lote "+lote+" y sus muestras. No se puede deshacer.","Eliminar")) return; if(!await App.Sec.pin("Eliminar el lote "+lote)) return; const t=App.S.tanques[lote]; if(await App.Store.del("tanques",lote)){ await App.Sec.auditar("Lote eliminado","FV "+(t&&t.tq)+" · "+lote+" · "+((t&&t.muestras)||[]).length+" muestras","(eliminado)"); toast("Tanque eliminado"); App.go("tanques"); } }
+})();

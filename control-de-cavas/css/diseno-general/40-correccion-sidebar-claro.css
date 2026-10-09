@@ -1,0 +1,72 @@
+/* Control de Cavas v42 — Corrección de contraste de navegación.
+   Se carga al final para resolver la contradicción entre v4-refined-shell
+   y v42-neutral-tokens sin modificar la lógica ni el tema oscuro. */
+:root[data-theme="light"] {
+  --side-bg: #f5f5f7;
+  --side-ink: #1d1d1f;
+  --side-muted: #636366;
+  --side-mute: #636366;
+  --side-hover: #e8e8ed;
+  --side-active: #e6f0ff;
+  --side-active-ink: #005ac2;
+}
+:root[data-theme="light"] #side,
+:root[data-theme="light"] .side {
+  background: #f5f5f7 !important;
+  color: #1d1d1f !important;
+}
+:root[data-theme="light"] #side .brand b,
+:root[data-theme="light"] #side .brand strong,
+:root[data-theme="light"] #side .brand span:not(.muted),
+:root[data-theme="light"] #side .nav a,
+:root[data-theme="light"] #side .nav a svg,
+:root[data-theme="light"] .side .brand b,
+:root[data-theme="light"] .side .nav a {
+  color: #1d1d1f !important;
+  opacity: 1 !important;
+}
+:root[data-theme="light"] #side .nav-g,
+:root[data-theme="light"] #side .side-foot,
+:root[data-theme="light"] #side .brand .muted,
+:root[data-theme="light"] .side .nav-g,
+:root[data-theme="light"] .side .side-foot,
+:root[data-theme="light"] .side .brand span {
+  color: #636366 !important;
+  opacity: 1 !important;
+}
+:root[data-theme="light"] #side .nav a:hover,
+:root[data-theme="light"] .side .nav a:hover {
+  background: #e8e8ed !important;
+  color: #1d1d1f !important;
+}
+:root[data-theme="light"] #side .nav a[aria-current="page"],
+:root[data-theme="light"] .side .nav a[aria-current="page"] {
+  background: #e6f0ff !important;
+  color: #005ac2 !important;
+}
+:root[data-theme="light"] #side .nav a[aria-current="page"] svg,
+:root[data-theme="light"] .side .nav a[aria-current="page"] svg {
+  color: #005ac2 !important;
+}
+:root[data-theme="light"] #side .side-theme-control,
+:root[data-theme="light"] .side .side-theme-control {
+  color: #1d1d1f !important;
+  background: #fff !important;
+}
+/* Si el usuario no ha elegido tema, respetar preferencia clara del sistema. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]):not([data-theme="light"]) {
+    --side-ink: #1d1d1f;
+    --side-muted: #636366;
+    --side-mute: #636366;
+  }
+  :root:not([data-theme]) .side {
+    background: #f5f5f7 !important;
+    color: #1d1d1f !important;
+  }
+  :root:not([data-theme]) .side .brand b,
+  :root:not([data-theme]) .side .nav a { color: #1d1d1f !important; opacity: 1 !important; }
+  :root:not([data-theme]) .side .nav-g,
+  :root:not([data-theme]) .side .brand span,
+  :root:not([data-theme]) .side .side-foot { color: #636366 !important; opacity: 1 !important; }
+}
