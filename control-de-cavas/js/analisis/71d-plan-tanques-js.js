@@ -225,9 +225,9 @@
   A.PlanPasos.push((ctx) => {
     const E = engine(ctx); if (!E.T.length) return [];
     const X = estanciaSpec(E);
-    return X.todas && X.lotes ? [{ t: 'Cerrar la brecha de tiempo en el fermentador', d: `${fmt(Math.min(...X.marcas.map((m) => m.sobre)), 0)} a ${fmt(Math.max(...X.marcas.map((m) => m.sobre)), 0)} % de los lotes pasa más tiempo del permitido en FV; son unos ${fmt(X.lotes, 1)} lotes al mes (≈ ${fmt(X.lotes * X.medIn, 0)} Hl) de capacidad. Confirmar si el límite sigue vigente y revisar la temperatura de fermentación.`, tag: 'Proceso' }] : [];
+    return X.todas && X.lotes ? [{ t: 'Cerrar la brecha de tiempo en el fermentador', d: `${fmt(Math.min(...X.marcas.map((m) => m.sobre)), 0)} a ${fmt(Math.max(...X.marcas.map((m) => m.sobre)), 0)} % de los lotes pasa más tiempo del permitido en FV; son unos ${fmt(X.lotes, 1)} lotes al mes (≈ ${fmt(X.lotes * X.medIn, 0)} Hl) de capacidad. Confirmar si el límite sigue vigente y revisar la temperatura de fermentación.`, tag: 'Proceso', cap: X.lotes * (E.wd / 30) * X.medIn }] : [];
   });
-  A.PlanBase.tanqueEngine = engine;
+  A.PlanBase.tanqueEngine = engine; A.PlanBase.estanciaSpec = estanciaSpec;
 
   /* ======================= Bloque dentro de la ficha de cada FV ======================= */
   function bloque(tq) {

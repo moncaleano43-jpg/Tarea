@@ -303,12 +303,12 @@
     if (M.palancas && M.palancas.length) {
       if (M.pctSinExp > 50) pasos.push({ t: 'Medir lo que hoy no se registra', d: `${fmt(M.pctSinExp, 0)} % de la merma de fermentación (${fmt(M.sinExp, 0)} Hl) no está en ninguna purga. Registrar volumen de cada purga, trasiego y arrastre de levadura.`, tag: 'Merma' });
       const p = M.palancas[0];
-      pasos.push({ t: p.label, d: `${fmt(p.value, 0)} Hl del periodo (${fmt((p.value / M.loss) * 100, 0)} % de la merma, ≈ ${fmt(p.value / M.lote, 1)} lotes).`, tag: 'Merma' });
+      pasos.push({ t: p.label, d: `${fmt(p.value, 0)} Hl del periodo (${fmt((p.value / M.loss) * 100, 0)} % de la merma, ≈ ${fmt(p.value / M.lote, 1)} lotes).`, tag: 'Merma', hl: p.value });
       const tq = M.tanques.filter((t) => t.real && t.exceso > 0).slice(0, 3);
       if (tq.length) pasos.push({ t: `Inspeccionar ${tq.map((t) => 'TQ ' + t.k).join(', ')}`, d: `Pierden de más con evidencia fuerte: ${fmt(sum(tq.map((t) => t.exceso)), 0)} Hl sobre lo esperado.`, tag: 'Merma' });
     }
     if (G.m3) {
-      pasos.push({ t: 'Repartir los turnos pico de agua', d: `${fmt(G.exPico, 0)} m³ (${fmt((G.exPico / G.m3) * 100, 0)} % del agua) se gastan por encima de ${fmt(G.p75, 0)} m³ por turno. Revisar los ${G.peores.length} turnos de mayor consumo.`, tag: 'Agua' });
+      pasos.push({ t: 'Repartir los turnos pico de agua', d: `${fmt(G.exPico, 0)} m³ (${fmt((G.exPico / G.m3) * 100, 0)} % del agua) se gastan por encima de ${fmt(G.p75, 0)} m³ por turno. Revisar los ${G.peores.length} turnos de mayor consumo.`, tag: 'Agua', m3: G.exPico });
       if (G.pctAseo != null && G.pctAseo < 40) pasos.push({ t: 'Aforar el agua fuera de los aseos', d: `Los aseos registrados explican solo ${fmt(G.pctAseo, 0)} % del medidor. Un aforo nocturno sin producción separa fuga de consumo real.`, tag: 'Agua' });
     }
     (A.PlanPasos || []).forEach((f) => { try { (f(ctx) || []).forEach((x) => pasos.push(x)); } catch (e) { if (window.console) console.error('[Plan]', e); } });
@@ -317,13 +317,14 @@
 
   function renderPlan(ctx, UI) {
     const pasos = planResumen(ctx);
-    const cab = pasos.length ? `<section class="an-card an-plan"><header class="an-card-h"><div><h3>Qué haría, en este orden</h3><p>Se recalcula con el periodo y la marca elegidos arriba.</p></div></header><div class="an-card-b"><ol class="an-plan-l">${pasos.map((p) => `<li><span class="an-plan-tag ${p.tag === 'Agua' ? 'agua' : ''}">${esc(p.tag)}</span><div><b>${esc(p.t)}</b><p>${esc(p.d)}</p></div></li>`).join('')}</ol></div></section>` : '';
+    const cab = pasos.length ? `<section class="an-card an-plan"><header class="an-card-h"><div><h3>Qué haría, en este orden</h3><p>Se recalcula con el periodo y la marca elegidos arriba.</p></div></header><div class="an-card-b"><ol class="an-plan-l">${pasos.map((p) => `<li><span class="an-plan-tag ${p.tag === 'Agua' ? 'agua' : ''}">${esc(p.tag)}</span><div><b>${esc(p.t)}</b><p>${esc(p.d)}${(() => { const din = B.dinero && (p.hl || p.m3 || p.cap) ? B.dinero({ hl: p.hl, m3: p.m3, cap: p.cap }) : ''; return din ? ` <b>≈ ${esc(din)} en el periodo.</b>` : ''; })()}</p></div></li>`).join('')}</ol></div></section>` : '';
     const extra = (A.PlanExtra || []).map((f) => { try { return f(ctx, UI) || ''; } catch (e) { if (window.console) console.error('[Plan]', e); return ''; } }).join('');
     const nav = `<nav class="an-plan-nav" aria-label="Ir a una sección">${[['plan-s-merma', 'Merma'], ['plan-s-agua', 'Agua'], ['plan-s-cambio', 'Qué cambió'], ['plan-s-rec', 'Recuperación, aseos y trasiegos'], ['plan-s-proy', 'Proyección y datos que faltan']].map(([id, t]) => `<button type="button" class="an-chip" data-go="${id}">${t}</button>`).join('')}</nav>`;
     return `${cab}${nav}<h2 class="an-sec" id="plan-s-merma">Merma · fermentación</h2>${renderMerma(ctx, UI)}<h2 class="an-sec" id="plan-s-agua">Agua</h2>${renderAgua(ctx, UI)}${extra}`;
   }
 
-  A.PlanBase = { mermaPlan, aguaPlan, capit, pl };
+  const B = (A.PlanBase = { mermaPlan, aguaPlan, capit, pl });
+  B.planResumen = planResumen;
   AN.registrar({
     id: 'plan', label: 'Dónde actuar', orden: 1.5, render: renderPlan,
     mount(ctx, el) { el.querySelectorAll('[data-go]').forEach((b) => { b.onclick = () => { const t = document.getElementById(b.dataset.go); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }; }); },
