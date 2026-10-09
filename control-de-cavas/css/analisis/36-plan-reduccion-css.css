@@ -5,3 +5,6 @@
 .an-plan-l li b{font-size:14px;color:var(--ink)}
 .an-plan-tag{font:600 11px var(--sans);letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2);margin-top:1px}
 .an-plan-tag.agua{color:var(--est,#5d6f8c)}
+.an-plan-n{counter-reset:pn}
+.an-plan-n li{grid-template-columns:auto 1fr;counter-increment:pn}
+.an-plan-n li::before{content:counter(pn);font:600 12px var(--sans);width:22px;height:22px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center}

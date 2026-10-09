@@ -84,8 +84,16 @@
       const hab = rs.filter((r) => Math.abs(r.exc) <= 10), fHab = hab.length >= 15 ? rate(hab) : null;
       const sobre = rs.filter((r) => r.exc > 30);
       R.fHab = fHab != null ? fHab * 100 : null;
-      R.exLlenado = fHab != null && sobre.length >= 8 ? Math.max(0, sum(vals(sobre, 'loss')) - sum(vals(sobre, 'input')) * fHab) : null;
       R.nSobre = sobre.length; R.tasaSobre = sobre.length >= 8 ? rate(sobre) * 100 : null;
+      // Se compara dentro de cada marca y tipo de tanque para no confundir el llenado con la marca (Light llena más y pierde más).
+      let exL = 0, cubL = 0;
+      marcas.forEach((b) => ['normal', 'grande'].forEach((c) => {
+        const hi = sobre.filter((r) => r.brand === b && r.cls === c), ok = hab.filter((r) => r.brand === b && r.cls === c);
+        if (hi.length >= 5 && ok.length >= 8) { exL += sum(vals(hi, 'loss')) - sum(vals(hi, 'input')) * rate(ok); cubL += hi.length; }
+      }));
+      const tt = sobre.length >= 8 && hab.length >= 8 ? S.ttest(sobre.map((r) => r.resPct), hab.map((r) => r.resPct)) : null;
+      R.pLlenado = tt ? tt.p : null; R.llenadoReal = !!(tt && tt.p < 0.05 && tt.diff > 0 && exL > 0);
+      R.exLlenado = cubL >= 8 ? Math.max(0, exL) : null;
 
       // --- Serie: purgas frente a merma sin explicar ---
       const by = ctx.rango.dias > 200 ? 'month' : 'week';
@@ -97,7 +105,7 @@
       R.marcas.filter((m) => m.exceso > 0 && m.tasa - m.ref >= 0.3).forEach((m) => R.palancas.push({ label: `${capit(m.k)} como las demás marcas`, value: m.exceso, color: WARN, nota: `${m.k} pierde ${fmt(m.tasa, 1)} % y las otras marcas en el mismo tipo de tanque ${fmt(m.ref, 1)} %` }));
       if (R.grandes && R.grandes.exceso > 0) R.palancas.push({ label: 'Tanques grandes como normales', value: R.grandes.exceso, color: WARN });
       if (R.exTanques > 0 && R.nTanquesMal) R.palancas.push({ label: `${R.nTanquesMal} tanque${R.nTanquesMal === 1 ? '' : 's'} que pierden de más`, value: R.tanques.filter((t) => t.exceso > 0 && t.z > 1.5).reduce((s, t) => s + t.exceso, 0), color: EST });
-      if (R.exLlenado) R.palancas.push({ label: 'Llenado: tope de +30 Hl', value: R.exLlenado, color: EST });
+      if (R.llenadoReal && R.exLlenado) R.palancas.push({ label: 'Llenado: tope de +30 Hl', value: R.exLlenado, color: EST });
       R.palancas.sort((a, b) => b.value - a.value);
       return R;
     });
@@ -148,11 +156,10 @@
     const cardLl = (() => {
       const d = R.llenado.filter((x) => x.tasa != null);
       if (d.length < 3 || R.fHab == null) return UI.card('Volumen de llenado', '', UI.vacio('Pocos llenados para comparar niveles.'));
-      const dif = R.tasaSobre != null ? R.tasaSobre - R.fHab : null;
-      const util = dif != null && dif >= 0.5;
+      const util = R.llenadoReal;
       const l = `Merma según cuántos Hl se llenó por encima (+) o por debajo (−) de lo habitual de su tipo de tanque (${fmt(R.habitual.normal, 0)} Hl en los normales${R.habitual.grande ? `, ${fmt(R.habitual.grande, 0)} Hl en los grandes` : ''}). ` +
-        (util ? `Pasarse más de 30 Hl sube la merma de ${fmt(R.fHab, 1)} % a <b>${fmt(R.tasaSobre, 1)} %</b> (${R.nSobre} llenados, ${fmt(R.exLlenado, 0)} Hl de más). <b>Qué hacer:</b> fijar un tope de llenado en el procedimiento y avisar al operador cuando el volumen pase de +30 Hl.` :
-          'Llenar de más no muestra un costo claro en este periodo; no vale la pena endurecer el límite todavía.');
+        (util ? `Pasarse más de 30 Hl sube la merma de ${fmt(R.fHab, 1)} % a ${fmt(R.tasaSobre, 1)} % y, comparando dentro de cada marca, serían unos <b>${fmt(R.exLlenado, 0)} Hl</b> de más (${R.nSobre} llenados; diferencia significativa, p = ${fmt(R.pLlenado, 3)}). <b>Qué hacer:</b> probar un tope de llenado durante unas semanas y ver si la merma baja; no darlo por hecho todavía.` :
+          `<b>Posible factor, sin evidencia suficiente.</b> A simple vista los lotes muy llenos pierden más${R.tasaSobre != null ? ` (${fmt(R.tasaSobre, 1)} % frente a ${fmt(R.fHab, 1)} %)` : ''}, pero gran parte es porque son de Light, que ya pierde más. Comparando dentro de cada marca la diferencia ${R.pLlenado != null ? `no es estadísticamente clara (p = ${fmt(R.pLlenado, 2)})` : 'no se puede medir'}. <b>Qué hacer:</b> nada por ahora; se vigila.`);
       return An1.tarjeta(UI, 'Volumen de llenado', 'Merma (%) según el exceso de llenado sobre lo habitual.',
         C.bars({ w: W.half, h: 260, unit: '%', toolbar: true, id: 'ch-pl-llenado', data: d.map((x, i) => ({ label: `${x.label} (${x.n})`, value: r1(x.tasa), color: x.label.startsWith('+30') || x.label.startsWith('Más') ? WARN : MUTED })), refs: [{ y: r1(R.fHab), label: 'Habitual', dashed: true }] }), l, { tono: util ? 'warn' : '' });
     })();
@@ -304,15 +311,18 @@
       pasos.push({ t: 'Repartir los turnos pico de agua', d: `${fmt(G.exPico, 0)} m³ (${fmt((G.exPico / G.m3) * 100, 0)} % del agua) se gastan por encima de ${fmt(G.p75, 0)} m³ por turno. Revisar los ${G.peores.length} turnos de mayor consumo.`, tag: 'Agua' });
       if (G.pctAseo != null && G.pctAseo < 40) pasos.push({ t: 'Aforar el agua fuera de los aseos', d: `Los aseos registrados explican solo ${fmt(G.pctAseo, 0)} % del medidor. Un aforo nocturno sin producción separa fuga de consumo real.`, tag: 'Agua' });
     }
-    return pasos;
+    (A.PlanPasos || []).forEach((f) => { try { (f(ctx) || []).forEach((x) => pasos.push(x)); } catch (e) { if (window.console) console.error('[Plan]', e); } });
+    return pasos.sort((a, b) => (a.tag === 'Agua') - (b.tag === 'Agua'));
   }
 
   function renderPlan(ctx, UI) {
     const pasos = planResumen(ctx);
     const cab = pasos.length ? `<section class="an-card an-plan"><header class="an-card-h"><div><h3>Qué haría, en este orden</h3><p>Se recalcula con el periodo y la marca elegidos arriba.</p></div></header><div class="an-card-b"><ol class="an-plan-l">${pasos.map((p) => `<li><span class="an-plan-tag ${p.tag === 'Agua' ? 'agua' : ''}">${esc(p.tag)}</span><div><b>${esc(p.t)}</b><p>${esc(p.d)}</p></div></li>`).join('')}</ol></div></section>` : '';
-    return `${cab}<h2 class="an-sec">Merma · fermentación</h2>${renderMerma(ctx, UI)}<h2 class="an-sec">Agua</h2>${renderAgua(ctx, UI)}`;
+    const extra = (A.PlanExtra || []).map((f) => { try { return f(ctx, UI) || ''; } catch (e) { if (window.console) console.error('[Plan]', e); return ''; } }).join('');
+    return `${cab}<h2 class="an-sec">Merma · fermentación</h2>${renderMerma(ctx, UI)}<h2 class="an-sec">Agua</h2>${renderAgua(ctx, UI)}${extra}`;
   }
 
+  A.PlanBase = { mermaPlan, aguaPlan, capit, pl };
   AN.registrar({
     id: 'plan', label: 'Dónde actuar', orden: 1.5, render: renderPlan,
     hallazgos(ctx) {
