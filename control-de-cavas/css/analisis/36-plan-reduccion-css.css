@@ -77,3 +77,9 @@
   .an-card{break-inside:avoid;box-shadow:none!important}
 }
 .wk-src{color:var(--muted);font-size:11px}
+
+/* Informe del analista */
+.an-q-l{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.an-q{display:grid;gap:6px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.an-q:last-child{border-bottom:0;padding-bottom:0}
+.an-q-n{font:13px var(--sans);color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:7px 10px;min-height:36px;width:100%;box-sizing:border-box}

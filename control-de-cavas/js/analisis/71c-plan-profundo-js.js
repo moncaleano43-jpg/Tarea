@@ -268,6 +268,7 @@
 
   /* ======================= Registro ======================= */
   B.fvHist = fvHist; B.rate = rate; B.mesKey = mesKey; B.mesLabel = mesLabel;
+  B.errProy = (ctx) => An1.memo(ctx, 'planErrProy', () => { const stub = { card: () => '', grid: () => '', vacio: () => '', lectura: () => '', badge: () => '', tabla: () => '' }; try { proyeccion(ctx, stub); } catch (e) { /* sin datos */ } return Object.assign({}, ERR); });
   A.PlanExtra = A.PlanExtra || [];
   A.PlanExtra.push((ctx, UI) => sec('Qué cambió y qué no explica la merma', 'plan-s-cambio') + cambioMerma(ctx, UI) + noExplica(ctx, UI));
   A.PlanExtra.push((ctx, UI) => sec('Recuperación, aseos y trasiegos', 'plan-s-rec') + recuperacion(ctx, UI) + aseosOperarios(ctx, UI) + trasiegos(ctx, UI));

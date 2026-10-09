@@ -67,7 +67,8 @@
         r.oMerma = r.loss != null && r.input > 0 && rate.has(r.key) ? ((r.loss - r.input * rate.get(r.key)) / r.input) * 100 : null;
         r.oArr = r.h15 != null && m15.get(r.key) != null ? r.h15 - m15.get(r.key) : null;
         r.oVel = r.h75 != null && m75.get(r.key) != null ? r.h75 - m75.get(r.key) : null;
-        r.oRdf = r.rdf != null && mrdf.get(r.key) != null ? r.rdf - mrdf.get(r.key) : null;
+        // El extracto final solo vale en lotes ya cerrados: en los que siguen fermentando todavía no es el final
+        r.oRdf = r.stay != null && r.rdf != null && mrdf.get(r.key) != null ? r.rdf - mrdf.get(r.key) : null;
         r.oEst = r.stay != null && mst.get(r.key) != null ? r.stay - mst.get(r.key) : null;
         r.eoDev = r.eo != null && eoM.get(r.brand) != null ? r.eo - eoM.get(r.brand) : null;
         const b = m75.get(r.brand + '|N'); r.vel0 = r.h75 != null ? r.h75 : null;
@@ -217,6 +218,7 @@
   }
 
   AN.registrar({ id: 'factores', label: 'Qué afecta a qué', orden: 1.7, render });
+  B.lotesFx = lotes; B.modeloVel = modeloVel; B.ols = ols; B.grupoEquipo = grupoEquipo;
 
   A.PlanPasos = A.PlanPasos || [];
   A.PlanPasos.push((ctx) => {

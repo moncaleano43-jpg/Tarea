@@ -6,6 +6,7 @@ Todo lo nuevo está en **Análisis**, se calcula en vivo con los datos cargados 
 
 | Pestaña | Para qué sirve | Archivo |
 |---|---|---|
+| **Informe del analista** | Lo que revisaría un analista cada día: qué cambió desde la última visita, lo más importante hoy, dónde está la variación que todavía no se explica y qué dato nuevo ayudaría a predecir mejor, experimentos propuestos, preguntas para planta (con notas) y resumen copiable para la reunión. | `js/analisis/71i-plan-analista-js.js` |
 | **Resumen semanal** | Última semana frente a la anterior, alertas, tanques por vigilar y acciones. Se imprime / guarda en PDF o se copia como texto. | `js/analisis/71g-plan-semana-js.js` |
 | **Dónde actuar** | Plan en orden, palancas de merma y agua, qué cambió, qué no explica la merma, recuperación, aseos, trasiegos, proyección y datos que faltan. | `71b-plan-reduccion-js.js`, `71c-plan-profundo-js.js` |
 | **Tanques** | Cada fermentador: semáforo de merma, ocupación, velocidad y estancia frente a la hoja de especificaciones. También agrega «Merma de este tanque» a la ficha de cada FV. | `71d-plan-tanques-js.js` |
@@ -13,7 +14,7 @@ Todo lo nuevo está en **Análisis**, se calcula en vivo con los datos cargados 
 | **Qué afecta a qué** | Mapa de factores contra resultados (merma, arranque, velocidad, extracto final, estancia), efecto en horas de cada factor, qué actividades mueven el agua, qué explica el retraso de trasiegos y qué influye en la recuperación. | `71h-plan-factores-js.js` |
 | **Proceso y levadura** | Velocidad según la generación, viabilidad, cambios en el tiempo y cumplimiento por marca. | `71e-plan-proceso-js.js` |
 
-Estilos: `css/analisis/36-plan-reduccion-css.css`. El orden de carga está en `index.html` (71b → 71h); respétalo, cada archivo usa lo que exporta el anterior (`App.PlanBase`).
+Estilos: `css/analisis/36-plan-reduccion-css.css`. El orden de carga está en `index.html` (71b → 71i); respétalo, cada archivo usa lo que exporta el anterior (`App.PlanBase`).
 
 ## Cómo leer el semáforo de un tanque
 - Se compara la merma real de cada lote con la **esperada para su marca y tamaño de tanque**. Si hubo un cambio de nivel en la planta (p. ej. 2-feb-2026), lo esperado se calcula con los lotes posteriores.
@@ -37,6 +38,10 @@ Estilos: `css/analisis/36-plan-reduccion-css.css`. El orden de carga está en `i
 - **Agua:** los aseos de red de mosto, anillos, red de cerveza y red de trasiego arrastran de 5 a 12 veces más agua de la que anotan; el «m³ por aseo» es un cálculo (caudal × minutos), no una lectura.
 - **Retraso de trasiegos:** solo lo explica el mes (febrero a abril), no la marca, el tanque ni la hora.
 - **Recuperación:** solo las horas de espera (y, con menos fuerza, la cantidad de levadura procesada) se relacionan con el rendimiento.
+
+## Cómo funciona «Dónde está lo que todavía no vemos»
+Para cada resultado (velocidad, arranque, extracto final, merma, estancia, retraso de trasiegos, agua diaria) se descuenta lo que ya se explica (marca, tamaño de tanque, factores medidos) y se mide qué parte de lo que queda **se parece entre lotes del mismo tanque, día, semana o mes** (ω², con prueba de permutación). Una parte alta en un grupo indica que algo cambia con ese grupo y no se registra; sin estructura indica ruido de medición. Sirve para decidir qué dato nuevo registrar primero.
+Las notas y casillas de «Preguntas que llevaría a planta» y la comparación «Desde la última visita» se guardan **solo en el navegador** donde se usan.
 
 ## Limitaciones que conviene recordar
 - Todo son **asociaciones**, no causas comprobadas.
