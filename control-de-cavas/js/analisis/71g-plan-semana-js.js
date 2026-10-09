@@ -151,8 +151,8 @@
     const tanques = UI.card('Tanques por vigilar', 'Tanques cuya merma reciente supera lo esperado por su marca y tamaño.', vig.length ?
       UI.tabla([{ k: 'tq', t: 'Tanque', num: true }, { k: 'estado', t: 'Estado' }, An1.colNum('m8', 'Últimos 8 lotes (pp)', 2), An1.colNum('z', 'Errores estándar', 1), { k: 'ult', t: 'Último lote' }],
         vig.map((t) => ({ tq: t.tq, estado: t.st === 'rojo' ? 'Revisar' : 'Vigilar', m8: An1.round(t.m8, 2), z: An1.round(t.z, 1), ult: `${t.ult.lote} · ${t.ult.brand} · ${AN.fmtDate(t.ult.t)}` })), { id: 'tb-wk-tq', nombre: 'tanques-vigilar', sort: { k: 'z', dir: -1 }, max: 10 }) : UI.vacio('Ningún tanque sale de lo esperado.'));
-    const acc = UI.card('Acciones pendientes', 'En el orden de «Dónde actuar». Si registraste valores en pesos en «Simulador», aparecen aquí.', pasos.length ?
-      `<ol class="an-plan-l an-plan-n">${pasos.slice(0, 6).map((p) => { const din = p.hl || p.m3 || p.cap ? B.dinero({ hl: p.hl, m3: p.m3, cap: p.cap }) : ''; return `<li><div><b>${esc(p.t)}</b><p>${esc(p.d)}${din ? ` <b>≈ ${esc(din)} en el periodo.</b>` : ''}</p></div></li>`; }).join('')}</ol>` : UI.vacio('Sin acciones pendientes.'));
+    const acc = UI.card('Acciones pendientes', 'En el orden de «Dónde actuar».', pasos.length ?
+      `<ol class="an-plan-l an-plan-n">${pasos.slice(0, 6).map((p) => `<li><div><b>${esc(p.t)}</b><p>${esc(p.d)}</p></div></li>`).join('')}</ol>` : UI.vacio('Sin acciones pendientes.'));
     return `<div class="wk-root">${cab}${kpis}${alertasCard}${UI.grid([tanques, acc], 2)}</div>`;
   }
 
