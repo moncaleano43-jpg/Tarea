@@ -69,11 +69,13 @@
     const M = B.mermaPlan(ctx), rs = M.rs || [];
     if (rs.length < 40) return vacio(UI, 'Lo que no explica la merma', '', 'Se necesitan al menos 40 llenados de fermentación en el periodo. Prueba con «Todo el histórico».');
     const fm = new Map(); An1.sane('ferm', ctx.todas('ferm')).forEach((f) => { if (f.lote) fm.set(String(f.lote), f); });
-    const j = rs.map((r) => { const f = fm.get(String(r.lote)); return { r, f, ciclo: f && f.t ? (r.t - f.t) / DAY : null }; });
+    const pd0 = A.ProcesoDatos ? A.ProcesoDatos.byLote() : new Map();
+    const j = rs.map((r) => { const f = fm.get(String(r.lote)); return { r, f, pr: pd0.get(String(r.lote)) || null, ciclo: f && f.t ? (r.t - f.t) / DAY : null }; });
     const defs = [
       ['Volumen de entrada', (x) => x.r.input], ['Días en el tanque', (x) => (x.ciclo > 0 && x.ciclo < 40 ? x.ciclo : null)], ['Generación de levadura', (x) => x.f && x.f.gen],
       ['Viabilidad de la levadura', (x) => x.f && x.f.viab], ['Consistencia de la levadura', (x) => x.f && x.f.cons], ['Horas hasta 75 % de atenuación', (x) => x.f && x.f.h75],
       ['Atenuación final', (x) => x.f && x.f.atten], ['Extracto original', (x) => x.f && x.f.eo], ['Tiempo de llenado', (x) => (x.f && x.f.tll > 0 && x.f.tll < 48 ? x.f.tll : null)], ['Hora del cierre', (x) => new Date(x.r.t).getHours()],
+      ['Oxígeno del mosto', (x) => x.pr && x.pr.o2], ['Temperatura del mosto', (x) => x.pr && x.pr.wortT], ['Recuento de células a 3 h', (x) => x.pr && x.pr.recM], ['Temperatura de siembra', (x) => x.pr && x.pr.tSie], ['Amargor (BU)', (x) => x.pr && x.pr.bu], ['Color (EBC)', (x) => x.pr && x.pr.ebc],
     ];
     const res = defs.map(([label, fn]) => {
       const pa = j.map((x) => ({ v: fn(x), y: x.r.resPct, y0: x.r.lossPct })).filter((p) => p.v != null && Number.isFinite(+p.v));

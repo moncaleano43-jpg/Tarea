@@ -1,0 +1,38 @@
+/* ============================================================
+   70-datos-proceso.js · Variables de proceso por lote que ya trae la hoja B.D FERMENTACIÓN y que Análisis no leía:
+   temperatura y oxígeno del mosto de cada cocimiento, aire (g/Hl), temperatura de siembra, presión de llenado,
+   número de cocimientos, amargor (BU), color (EBC), pH del mosto, factor de dosificación y recuento de células a las 3 h.
+   Lee las columnas originales del Excel (App.ExcelCavas.data()), así que se actualiza solo al cargar un Excel nuevo.
+   ============================================================ */
+(function () {
+  'use strict';
+  const A = window.App;
+  if (!A || !A.ExcelCavas) return;
+  const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+  const mean = (xs) => (xs.length ? xs.reduce((s, v) => s + v, 0) / xs.length : null);
+  let key = null, cache = null;
+
+  // Columnas de la hoja B.D FERMENTACIÓN (las mismas que usa el resto de la plataforma)
+  const C = { temp: [10, 17, 24, 31, 38], o2Coc: [13, 20, 27, 34, 41], aire: [43, 44, 45, 46], tSiembra: 59, presion: 62, nCoc: 63, o2: 66, phMosto: 69, bu: 70, ebc: 71, levHl: 74, dosif: 75, recuento: 77, colector: 51, fechaRecup: 54 };
+
+  function fila(r) {
+    const c = r.cells || {}, rango = (cols, lo, hi) => cols.map((k) => num(c[k])).filter((v) => v != null && v >= lo && v <= hi);
+    const en = (k, lo, hi) => { const v = num(c[k]); return v != null && v >= lo && v <= hi ? v : null; };
+    let rec = num(c[C.recuento]); rec = rec == null ? null : rec >= 1e6 ? rec / 1e6 : rec >= 1 && rec <= 100 ? rec : null;
+    return {
+      lote: r.lote, tq: r.tq,
+      wortT: mean(rango(C.temp, 1, 25)), o2Coc: mean(rango(C.o2Coc, 0.1, 40)), aire: mean(rango(C.aire, 0.1, 40)),
+      tSie: en(C.tSiembra, 1, 15), presion: en(C.presion, 0, 10), nCoc: en(C.nCoc, 1, 8), o2: en(C.o2, 0.5, 20), phMosto: en(C.phMosto, 4, 6), bu: en(C.bu, 10, 80), ebc: en(C.ebc, 5, 40),
+      levHl: en(C.levHl, 0, 60), dosif: en(C.dosif, 0, 0.1), recM: rec, colector: num(c[C.colector]), fechaRecup: c[C.fechaRecup] || null,
+    };
+  }
+
+  function get() {
+    const d = A.ExcelCavas.data();
+    if (d === key && cache) return cache;
+    const rows = (d.fermentations || []).map(fila).filter((r) => r.lote);
+    cache = { rows, byLote: new Map(rows.map((r) => [String(r.lote), r])) }; key = d;
+    return cache;
+  }
+  A.ProcesoDatos = { get, byLote: () => get().byLote, columnas: C };
+})();

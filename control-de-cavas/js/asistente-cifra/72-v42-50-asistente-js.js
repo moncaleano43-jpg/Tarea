@@ -683,6 +683,10 @@
     plan.F = F;
     operators();
 
+    // Extensiones registradas por otros módulos (p. ej. el análisis de tanques y factores): responden preguntas propias sin tocar el motor
+    if (A.CifraExt && A.CifraExt.length && !F.accion) {
+      for (const ext of A.CifraExt) { let m = null; try { m = ext.match(q, raw); } catch (e) { m = null; } if (m) { plan.intent = 'ext'; plan.ext = ext; plan.extArg = m; plan.conf = 0.9; plan.spec = null; return plan; } }
+    }
     if (F.accion) { plan.intent = 'legacy'; plan.why = 'accion'; return plan; }
     const dsw = scoreDs(q);
     const bestDs = Object.entries(dsw).sort((a, b) => b[1] - a[1]);
@@ -2590,6 +2594,7 @@
       const R = runSpec(spec);
       return R;
     }
+    if (it === 'ext' && plan.ext) { const R = new Resp({ intent: 'ext' }, 'ext'); plan.ext.responder(R, plan.extArg, plan); return R; }
     if (H[it]) return H[it](plan);
     return null;
   }

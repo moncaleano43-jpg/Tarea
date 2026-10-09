@@ -83,3 +83,15 @@
 .an-q{display:grid;gap:6px;padding-bottom:12px;border-bottom:1px solid var(--line)}
 .an-q:last-child{border-bottom:0;padding-bottom:0}
 .an-q-n{font:13px var(--sans);color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:7px 10px;min-height:36px;width:100%;box-sizing:border-box}
+
+/* Integración con el resto del programa */
+.tq-chip{display:flex;align-items:center;gap:8px;margin:8px 0 2px;padding:6px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);text-decoration:none;color:var(--ink);font-size:12px;line-height:1.2}
+.tq-chip i{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.tq-chip b{font-weight:650}
+.tq-chip small{margin-left:auto;color:var(--muted);font-size:11px;white-space:nowrap}
+.tq-chip.st-rojo{border-color:var(--neg,#b0442e)}.tq-chip.st-rojo i{background:var(--neg,#b0442e)}
+.tq-chip.st-ambar{border-color:var(--warn,#a26a14)}.tq-chip.st-ambar i{background:var(--warn,#a26a14)}
+.tq-chip.st-normal i,.tq-chip.st-bueno i{background:var(--pos,#3b7a59)}
+.an-inicio .pl-mas{align-self:flex-start}
+.an-in-p{padding:6px 0;font-size:13px;border-bottom:1px solid var(--line)}
+.an-inicio .pl-acc .btn{margin-top:10px;display:inline-block}

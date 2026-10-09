@@ -44,14 +44,23 @@
     return An1.memo(ctx, 'planAnalista', () => {
       const out = [], L = B.lotesFx(ctx).rows, M = B.modeloVel(ctx);
       const mk = (rows, f) => rows.map(f);
-      // Velocidad: lo que queda después de los factores medidos
+      // Velocidad, arranque y extracto final: lo que queda después de los factores medidos
+      const key = (r) => ({ tq: r.tq, dia: dia(r.t), sem: sem(r.t), mes: B.mesKey(r.t) });
+      const simple = (k, label, field, falta, unidad, filt) => { const rs = L.filter((r) => r[field] != null && Number.isFinite(r[field]) && (!filt || filt(r))).map((r) => Object.assign({ y: r[field] }, key(r))); if (rs.length >= 100) out.push({ k, label, r2: null, rs, falta, unidad }); };
       if (M) {
-        const b = M.fit.b, rs = mk(M.L, (r) => ({ y: r.v75 - (b[0] + b[1] * r.gen + b[2] * r.phL * 10 + b[3] * r.alm + b[4] * (r.G ? 1 : 0)), tq: r.tq, dia: dia(r.t), sem: sem(r.t), mes: B.mesKey(r.t) }));
-        out.push({ k: 'vel', label: 'Velocidad de fermentación', r2: M.fit.r2, rs, falta: 'Temperatura del mosto al llenar, oxígeno disuelto, células sembradas por ml y la cocción de origen. Son cosas que cambian de un día a otro y hoy no se registran.', unidad: 'h' });
+        const b = M.fit.b, rs = mk(M.L, (r) => Object.assign({ y: r.v75 - (b[0] + b[1] * r.gen + b[2] * r.phL * 10 + b[3] * r.alm + b[4] * (r.G ? 1 : 0) + b[5] * r.recM + b[6] * r.ebc) }, key(r)));
+        out.push({ k: 'vel', label: 'Velocidad de fermentación', r2: M.fit.r2, rs, falta: 'Temperatura de fermentación de cada tanque y estado del enfriamiento (la hoja de especificaciones la pide pero no hay lecturas), y quién y en qué turno llena. Cambian de un día a otro y no están en el Excel. Lo demás (oxígeno, temperatura del mosto, siembra, amargor, color) ya se registra y se usa.', unidad: 'h' });
       }
-      const simple = (k, label, field, falta, unidad, filt) => { const rs = L.filter((r) => r[field] != null && Number.isFinite(r[field]) && (!filt || filt(r))).map((r) => ({ y: r[field], tq: r.tq, dia: dia(r.t), sem: sem(r.t), mes: B.mesKey(r.t) })); if (rs.length >= 100) out.push({ k, label, r2: null, rs, falta, unidad }); };
-      simple('arr', 'Arranque (horas a 15 %)', 'oArr', 'Oxígeno al llenar, temperatura del mosto y células sembradas por ml en el momento de la siembra.', 'h');
-      simple('rdf', 'Extracto final', 'oRdf', 'Lote de malta y adjuntos, fermentabilidad del mosto (extracto límite del mosto) y calibración y analista del laboratorio.', '°P');
+      const Ma = B.modeloArr(ctx);
+      if (Ma) {
+        const b = Ma.fit.b, by = new Map(); [...new Set(Ma.L.map((r) => r.brand))].forEach((br) => by.set(br, med(vals(Ma.L.filter((r) => r.brand === br), 'h15'))));
+        out.push({ k: 'arr', label: 'Arranque (horas a 15 %)', r2: Ma.fit.r2, unidad: 'h', rs: mk(Ma.L, (r) => Object.assign({ y: r.h15 - by.get(r.brand) - (b[0] + b[1] * r.o2 + b[2] * r.phL * 10 + b[3] * r.alm + b[4] * r.gen + b[5] * r.recM) }, key(r))), falta: 'Casi todo lo explicable ya está en el Excel (oxígeno, recuento, levadura). Lo que queda no tiene estructura: es variación propia de cada lote o de medición.' });
+      } else simple('arr', 'Arranque (horas a 15 %)', 'oArr', 'Casi todo lo explicable ya está en el Excel (oxígeno, recuento, levadura).', 'h');
+      const Mr = B.modeloRdf(ctx);
+      if (Mr) {
+        const b = Mr.fit.b;
+        out.push({ k: 'rdf', label: 'Extracto final', r2: Mr.fit.r2, unidad: '°P', rs: mk(Mr.L, (r) => Object.assign({ y: r.oRdf - (b[0] + b[1] * r.bu + b[2] * r.o2 + b[3] * r.wortT + b[4] * r.gen) }, key(r))), falta: 'Lote de malta y adjuntos (no figura en el Excel), y calibración y analista del laboratorio. El amargor y el color del mosto ya están y explican solo una parte.' });
+      } else simple('rdf', 'Extracto final', 'oRdf', 'Lote de malta y adjuntos y calibración del laboratorio.', '°P');
       simple('mer', 'Merma', 'oMerma', 'Nada del tanque, de la semana ni del día la explica: es ruido de medición. Dato que ayudaría: método, hora y fecha de calibración de cada lectura de volumen de entrada y salida.', 'pp');
       simple('est', 'Estancia en fermentador', 'oEst', 'Motivo de cada estancia (frío, espera de SV, plan) y fecha y hora reales en que termina la fermentación activa.', 'd');
       // Retraso de trasiegos
@@ -99,11 +108,12 @@
     }
     const tab = filas.length ? UI.tabla([{ k: 'f', t: 'Factor' }, { k: 'e', t: 'Efecto estimado' }, { k: 't', t: 'Seguridad actual (t)' }, { k: 'm', t: 'Para estar seguro (t ≥ 4)' }], filas, { id: 'tb-an-exp', nombre: 'cuando-lo-sabremos', max: 5 }) : '';
     const items = [
-      ['Levadura fresca', '¿Guardar la levadura más de 2 días hace más lenta la fermentación?', 'Registrar fecha y hora de colecta y de siembra de cada lote; durante 4 a 6 semanas, planear levadura de ≤ 2 días en la mitad de los lotes de cada marca.', 'Horas hasta 75 % de los dos grupos, dentro de cada marca.'],
+      ['Levadura fresca', '¿Guardar la levadura más de 2 días hace más lenta la fermentación?', 'La fecha de colecta y la de siembra ya están en el Excel; durante 4 a 6 semanas, planear levadura de ≤ 2 días en la mitad de los lotes de cada marca.', 'Horas hasta 75 % de los dos grupos, dentro de cada marca.'],
       ['Temperatura de fermentación', '¿La temperatura explica por qué se pasan del tiempo permitido en el fermentador?', 'Lectura cada 6 horas por tanque durante 8 semanas y comparar con las horas hasta 75 % y con el límite de la hoja de especificaciones.', 'Relación entre temperatura y horas; tanques fuera del rango de temperatura que pide la hoja para cada marca.'],
       ['Dos métodos de medición', '¿La variación de ±80 Hl entre lotes iguales es de medición?', 'Medir 10 lotes con dos métodos (medidor de flujo y nivel de tanque) a la entrada y a la salida, por la misma persona.', 'Si los dos métodos difieren de un lote a otro tanto como la merma, el problema es de medición.'],
       ['Contador en las redes', '¿Cuánta agua usa de verdad cada aseo de red de mosto, anillos, red de cerveza y red de trasiego?', 'Leer el contador al iniciar y al terminar cada aseo de esas redes durante 2 semanas.', 'Si el consumo real coincide con los ≈ 33–52 m³ estimados por aseo.'],
-      ['Cocción y malta de origen', '¿Qué hace que el extracto final cambie por semana?', 'Anotar con cada lote la cocción, el lote de malta y adjuntos, y quién y con qué equipo mide el extracto final.', 'Qué variable acompaña a los cambios semanales del extracto final.'],
+      ['Oxígeno y arranque', '¿Más oxígeno en el mosto realmente hace más lento el arranque? Hoy se asocia +0,9 h por ppm.', 'Revisar cómo y dónde se mide el oxígeno y, durante 4 semanas, variar la aireación dentro del rango habitual en lotes alternos de la misma marca.', 'Horas hasta 15 % de los dos grupos, dentro de cada marca.'],
+      ['Malta y laboratorio', '¿Qué hace que el extracto final cambie por semana?', 'Anotar con cada lote el lote de malta y adjuntos, y quién y con qué equipo mide el extracto final (el amargor y el color ya están en el Excel).', 'Qué variable acompaña a los cambios semanales del extracto final.'],
     ];
     return UI.card('Qué experimentos haría esta semana', 'Cada uno responde una pregunta concreta con poco esfuerzo. En orden de prioridad.',
       `<ol class="an-plan-l an-plan-n">${items.map(([t, q, c, m]) => `<li><div><b>${esc(t)}</b> · ${esc(q)}<p><b>Cómo:</b> ${esc(c)}<br><b>Sabré que funcionó si:</b> ${esc(m)}</p></div></li>`).join('')}</ol>` +
@@ -129,7 +139,8 @@
     q.push(['tras', '¿Qué pasaba en los meses de mayor retraso de los trasiegos (personal, disponibilidad de tanques o UTK, planificación) y qué cambió después?']);
     q.push(['m3', 'El «m³ por aseo» ¿se mide con contador o se calcula con caudal × minutos? Hoy parece un cálculo.']);
     q.push(['grande', '¿Qué hacen distinto los tanques grandes (29 a 32)? Fermentan varias horas más rápido que los normales.']);
-    q.push(['lev', '¿Se puede registrar siempre la fecha y hora de colecta de la levadura y la cantidad sembrada?']);
+    q.push(['o2', '¿Cómo y dónde se mide el oxígeno del mosto? Con más oxígeno el arranque se asocia a ser más lento, al revés de lo esperado.']);
+    q.push(['rec3', '¿El recuento de células a las 3 horas se hace siempre con el mismo método? Más células se asocia a una fermentación más rápida.']);
     q.push(['ph', '¿Quién mide el pH de la levadura y con qué frecuencia? Más alto se asocia a fermentación más rápida.']);
     return q;
   }
@@ -200,5 +211,6 @@
     });
   }
 
-  AN.registrar({ id: 'analista-dia', label: 'Informe del analista', orden: 1.1, render, mount: montar });
+  B.resultadosAnalista = resultados; B.preguntasAnalista = preguntas;
+  AN.registrar({ id: 'analista-dia', label: 'Informe del analista', orden: 0.5, render, mount: montar });
 })();

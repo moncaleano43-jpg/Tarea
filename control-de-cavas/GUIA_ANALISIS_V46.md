@@ -14,7 +14,18 @@ Todo lo nuevo está en **Análisis**, se calcula en vivo con los datos cargados 
 | **Qué afecta a qué** | Mapa de factores contra resultados (merma, arranque, velocidad, extracto final, estancia), efecto en horas de cada factor, qué actividades mueven el agua, qué explica el retraso de trasiegos y qué influye en la recuperación. | `71h-plan-factores-js.js` |
 | **Proceso y levadura** | Velocidad según la generación, viabilidad, cambios en el tiempo y cumplimiento por marca. | `71e-plan-proceso-js.js` |
 
-Estilos: `css/analisis/36-plan-reduccion-css.css`. El orden de carga está en `index.html` (71b → 71i); respétalo, cada archivo usa lo que exporta el anterior (`App.PlanBase`).
+## Dónde más aparece el análisis (integración con el programa)
+- **Análisis** abre por defecto en el **Informe del analista**.
+- **Inicio:** tarjeta «Informe del analista» con las alertas del análisis y las 3 acciones que más importan, además del «Pulso de la planta» que ya existía (que también recoge los hallazgos nuevos).
+- **Campana de alertas** (arriba a la derecha): suma las alertas del análisis (tanques por vigilar, cambios de merma, picos de agua, retrasos de trasiego, datos sin actualizar). No suenan ni avisan: solo se listan y cuentan.
+- **Tanques:** cada ficha de fermentador muestra «Merma: En línea / Vigilar / Revisar» con su % y Hl frente a lo esperado; al tocarla abre el análisis. La ficha de cada FV también tiene su bloque de merma.
+- **Cifra (asistente):** responde «¿Qué tanques hay que vigilar?», «¿Cómo va el tanque 24?», «¿Qué afecta la velocidad de fermentación?», «¿Qué datos ayudarían a predecir mejor?», «¿Cuántos lotes ganamos si bajamos un día la estancia?» y «¿Qué haría un analista hoy?». Se agregó un gancho en el motor (`App.CifraExt`) para que otros módulos sumen preguntas sin tocar el resto.
+- Archivos: `js/analisis/78-plan-integracion-js.js` (se carga al final) y el gancho en `js/asistente-cifra/72-…` y `73-…`.
+
+## Datos de proceso que ya trae el Excel
+La hoja **B.D FERMENTACIÓN** ya registra, con 97–100 % de cobertura: temperatura y oxígeno del mosto de cada cocimiento, aire (g/Hl), temperatura de siembra, presión de llenado, número de cocimientos, amargor (BU), color (EBC), pH del mosto, factor de dosificación y recuento de células a las 3 h. `js/analisis/70-datos-proceso-js.js` los lee de las columnas originales (se actualiza solo al cargar un Excel nuevo) y el análisis los usa. Lo que **no** está en el Excel: temperatura de fermentación de cada tanque, lote de malta y adjuntos, causa de cada retraso de trasiego y lectura de contador por aseo.
+
+Estilos: `css/analisis/36-plan-reduccion-css.css`. El orden de carga está en `index.html` (70, 71b → 71i y 78 al final); respétalo, cada archivo usa lo que exporta el anterior (`App.PlanBase`).
 
 ## Cómo leer el semáforo de un tanque
 - Se compara la merma real de cada lote con la **esperada para su marca y tamaño de tanque**. Si hubo un cambio de nivel en la planta (p. ej. 2-feb-2026), lo esperado se calcula con los lotes posteriores.
@@ -33,7 +44,9 @@ Estilos: `css/analisis/36-plan-reduccion-css.css`. El orden de carga está en `i
 | Límites de especificación (tiempo máx. en FV, etc.) | hoja ESPECIFICACIONES MARCA del Excel | se leen solos |
 
 ## Lo que sí y lo que no afecta (con los datos actuales)
-- **Velocidad de fermentación:** la afectan el tamaño del tanque (grandes ≈ 5 h más rápido), la generación de la levadura (≈ 0,7 h menos por generación), el pH de la levadura (≈ 1 h menos por +0,1) y los días que se guarda la levadura antes de usarla (≈ 0,7 h más por día).
+- **Velocidad de fermentación:** la afectan el tamaño del tanque (grandes ≈ 5 h más rápido), la generación de la levadura (≈ 1 h menos por generación), el pH de la levadura (≈ 1 h menos por +0,1), los días que se guarda la levadura antes de usarla (≈ 0,6 h más por día), el recuento de células a las 3 h (más células, más rápido) y el color del mosto.
+- **Arranque (horas a 15 %):** se asocia a más oxígeno del mosto con arranque **más lento** (≈ +0,9 h por ppm); conviene revisar cómo se mide.
+- **Extracto final:** el amargor tiene un efecto pequeño (≈ −0,15 °P por +10 BU); cerca de un tercio de lo que queda cambia por semana (probablemente lote de malta o laboratorio).
 - **No se ve efecto** sobre la merma de ninguno de los factores medidos (levadura, tiempos, volumen, aseo previo, extracto original).
 - **Agua:** los aseos de red de mosto, anillos, red de cerveza y red de trasiego arrastran de 5 a 12 veces más agua de la que anotan; el «m³ por aseo» es un cálculo (caudal × minutos), no una lectura.
 - **Retraso de trasiegos:** solo lo explica el mes (febrero a abril), no la marca, el tanque ni la hora.

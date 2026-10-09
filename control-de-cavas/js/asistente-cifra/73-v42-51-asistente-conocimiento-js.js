@@ -123,6 +123,16 @@
       'Compara los trasiegos de este mes con los del mes pasado',
       'Distribución de la duración de los trasiegos',
     ] },
+    { id: 'analista', titulo: 'Tanques, factores y analista', icono: 'insight', ruta: 'analisis/analista-dia', ejemplos: [
+      '¿Qué tanques hay que vigilar?',
+      '¿Cómo va el tanque 24?',
+      'Estado de los tanques',
+      '¿Qué afecta la velocidad de fermentación?',
+      '¿Qué factores mueven el arranque?',
+      '¿Qué datos ayudarían a predecir mejor?',
+      '¿Cuántos lotes ganamos si bajamos un día la estancia?',
+      '¿Qué haría un analista hoy?',
+    ] },
     { id: 'analisis', titulo: 'Análisis y decisiones', icono: 'insight', ruta: 'analisis/resumen', ejemplos: [
       '¿Cuánto vamos a gastar de agua este mes?',
       'Pronóstico de aseos para el próximo mes',

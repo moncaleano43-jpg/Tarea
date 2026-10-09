@@ -14,7 +14,7 @@
   const { vals, sum, mean, med, W, DAY } = An1;
   const WARN = 'var(--warn,#a26a14)', NEG = 'var(--neg,#b0442e)', POS = 'var(--pos,#3b7a59)', EST = 'var(--est,#5d6f8c)', MUTED = 'var(--muted,#8a8a84)';
   const r1 = (v) => An1.round(v, 1);
-  const sg = (v, d = 1) => (v == null || !Number.isFinite(v) ? '—' : (v > 0 ? '+' : '') + fmt(v, d));
+  const sg = (v, d = 1) => (v == null || !Number.isFinite(v) ? '—' : (v > 0 ? '+' : '') + fmt(v, Math.abs(v) < 0.95 && d < 2 ? 2 : d));
   const pTxt = (p) => (p == null ? '—' : p < 0.001 ? 'menor que 0,001' : fmt(p, 3));
   const vacio = (UI, t, msg) => UI.card(t, '', UI.vacio(msg));
   const lc = (t) => String(t).charAt(0).toLowerCase() + String(t).slice(1);
@@ -45,14 +45,16 @@
       const grande = (tq) => capM.has(tq) && capM.get(tq) > ref * 1.08;
       const mm = new Map(); B.fvHist(ctx).forEach((r) => { if (r.lote) mm.set(String(r.lote), r); });
       const lev = new Map(); An1.sane('lev', ctx.todas('lev')).forEach((l) => { if (l.nombre) lev.set(l.nombre, l); });
+      const pd0 = A.ProcesoDatos ? A.ProcesoDatos.byLote() : new Map();
       const as = new Map(); An1.sane('aseos', ctx.todas('aseos')).forEach((a) => { const m = /^FV\s*(\d+)/i.exec(a.equipment || ''); if (m && a.sheet === '1. Cada uso' && a.t != null) { const k = +m[1]; if (!as.has(k)) as.set(k, []); as.get(k).push(a); } });
       as.forEach((v) => v.sort((a, b) => a.t - b.t));
       const rows = fe.map((r) => {
-        const l = lev.get(r.levadura), m = mm.get(String(r.lote)), G = grande(r.tq), alm = l && l.t != null ? (r.t - l.t) / DAY : null;
+        const l = lev.get(r.levadura), m = mm.get(String(r.lote)), G = grande(r.tq), pr = pd0.get(String(r.lote)) || {}, alm = l && l.t != null ? (r.t - l.t) / DAY : null;
         let pre = null; const xs = as.get(r.tq); if (xs) for (let i = xs.length - 1; i >= 0; i--) if (xs[i].t <= r.t) { if (r.t - xs[i].t <= 10 * DAY) pre = xs[i]; break; }
         return {
           brand: r.brand, G, tq: r.tq, t: r.t, key: r.brand + '|' + (G ? 'G' : 'N'), gen: r.gen, viab: r.viab, cons: r.cons, h15: r.h15, h75: r.h75, rdf: r.rdf, eo: r.eo, vol: r.vol,
           tll: r.tll > 3 && r.tll < 24 ? r.tll : null, phL: l ? l.ph : null, alm: alm != null && alm >= 0 && alm < 30 ? alm : null,
+          wortT: pr.wortT, o2: pr.o2, aire: pr.aire, tSie: pr.tSie, presion: pr.presion, nCoc: pr.nCoc, bu: pr.bu, ebc: pr.ebc, phMosto: pr.phMosto, recM: pr.recM,
           gapAs: pre ? (r.t - pre.t) / DAY : null, minAs: pre ? pre.minutes : null, flowAs: pre ? pre.flow : null,
           loss: m ? m.loss : null, input: m ? m.input : null, stay: m && m.t > r.t && (m.t - r.t) / DAY < 40 ? (m.t - r.t) / DAY : null,
         };
@@ -81,25 +83,46 @@
 
   const FACTORES = [
     ['Generación de la levadura', 'gen'], ['Viabilidad de la levadura', 'viab'], ['Consistencia de la levadura', 'cons'], ['pH de la levadura', 'phL'], ['Días guardada antes de usar', 'alm'],
-    ['Desvío del extracto original', 'eoDev'], ['Tiempo de llenado', 'tll'], ['Volumen de llenado', 'vol'], ['Aseo previo: días desde el aseo', 'gapAs'], ['Aseo previo: minutos', 'minAs'], ['Aseo previo: caudal', 'flowAs'],
+    ['Desvío del extracto original', 'eoDev'], ['Temperatura del mosto', 'wortT'], ['Oxígeno del mosto (ppm)', 'o2'], ['Aire (g/Hl)', 'aire'], ['Temperatura de siembra', 'tSie'], ['Presión de llenado', 'presion'], ['Número de cocimientos', 'nCoc'], ['Amargor (BU)', 'bu'], ['Color (EBC)', 'ebc'], ['pH del mosto', 'phMosto'], ['Recuento de células a 3 h', 'recM'], ['Tiempo de llenado', 'tll'], ['Volumen de llenado', 'vol'], ['Aseo previo: días desde el aseo', 'gapAs'], ['Aseo previo: minutos', 'minAs'], ['Aseo previo: caudal', 'flowAs'],
   ];
   const RESULT = [['Merma', 'oMerma'], ['Arranque (h a 15 %)', 'oArr'], ['Velocidad (h a 75 %)', 'oVel'], ['Extracto final', 'oRdf'], ['Estancia en FV', 'oEst']];
 
   /* Modelo de velocidad: generación, pH de la levadura, días guardada y tanque grande; cada factor extra se prueba por separado. */
   function modeloVel(ctx) {
     return An1.memo(ctx, 'planFxModelo', () => {
-      const L = lotes(ctx).rows.filter((r) => r.v75 != null && r.gen != null && r.phL != null && r.alm != null);
+      const L = lotes(ctx).rows.filter((r) => r.v75 != null && r.gen != null && r.phL != null && r.alm != null && r.recM != null && r.ebc != null);
       if (L.length < 120) return null;
-      const base = (r) => [1, r.gen, r.phL * 10, r.alm, r.G ? 1 : 0], fit = ols(L.map(base), L.map((r) => r.v75));
+      const base = (r) => [1, r.gen, r.phL * 10, r.alm, r.G ? 1 : 0, r.recM, r.ebc], fit = ols(L.map(base), L.map((r) => r.v75));
       if (!fit) return null;
       const extra = {};
-      [['viab', 'viab'], ['tll', 'tll'], ['cons', 'cons'], ['eoDev', 'eoDev'], ['vol', 'vol']].forEach(([k, f]) => {
+      [['viab', 'viab'], ['tll', 'tll'], ['cons', 'cons'], ['eoDev', 'eoDev'], ['vol', 'vol'], ['o2', 'o2'], ['wortT', 'wortT'], ['bu', 'bu'], ['tSie', 'tSie'], ['phMosto', 'phMosto'], ['presion', 'presion']].forEach(([k, f]) => {
         const M = L.filter((r) => r[f] != null && Number.isFinite(r[f]));
         if (M.length < 120) return;
         const f2 = ols(M.map((r) => base(r).concat([r[f]])), M.map((r) => r.v75));
-        if (f2) extra[k] = f2.b[5] / (f2.se[5] || 1);
+        if (f2) extra[k] = f2.b[7] / (f2.se[7] || 1);
       });
       return { L, fit, extra };
+    });
+  }
+
+  /* Modelo del arranque (horas hasta 15 %): oxígeno, pH de la levadura, días guardada, generación y recuento */
+  function modeloArr(ctx) {
+    return An1.memo(ctx, 'planFxArr', () => {
+      const L = lotes(ctx).rows.filter((r) => r.h15 != null && r.o2 != null && r.phL != null && r.alm != null && r.gen != null && r.recM != null);
+      if (L.length < 120) return null;
+      const by = new Map(); [...new Set(L.map((r) => r.brand))].forEach((b) => by.set(b, med(vals(L.filter((r) => r.brand === b), 'h15'))));
+      const y = L.map((r) => r.h15 - by.get(r.brand)), fit = ols(L.map((r) => [1, r.o2, r.phL * 10, r.alm, r.gen, r.recM]), y);
+      return fit ? { L, fit } : null;
+    });
+  }
+
+  /* Modelo del extracto final (solo lotes cerrados): amargor, oxígeno y temperatura del mosto */
+  function modeloRdf(ctx) {
+    return An1.memo(ctx, 'planFxRdf', () => {
+      const L = lotes(ctx).rows.filter((r) => r.oRdf != null && r.bu != null && r.o2 != null && r.wortT != null && r.gen != null);
+      if (L.length < 120) return null;
+      const fit = ols(L.map((r) => [1, r.bu, r.o2, r.wortT, r.gen]), L.map((r) => r.oRdf));
+      return fit ? { L, fit } : null;
     });
   }
 
@@ -111,9 +134,12 @@
     const real = []; cel.forEach((row, i) => row.forEach((c, j) => { if (c && c.p < 0.01 && Math.abs(c.r) >= 0.1) real.push({ f: FACTORES[i][0], o: RESULT[j][0], r: c.r, n: c.n }); }));
     real.sort((a, b) => Math.abs(b.r) - Math.abs(a.r));
     const matrix = cel.map((row) => row.map((c) => (c && c.p < 0.01 && Math.abs(c.r) >= 0.1 ? r1(c.r * 100) / 100 : null)));
-    const M = modeloVel(ctx), enModelo = M ? { gen: Math.abs(M.fit.b[1] / M.fit.se[1]) > 2.6, phL: Math.abs(M.fit.b[2] / M.fit.se[2]) > 2.6, alm: Math.abs(M.fit.b[3] / M.fit.se[3]) > 2.6 } : {};
+    const M = modeloVel(ctx), enModelo = M ? { gen: Math.abs(M.fit.b[1] / M.fit.se[1]) > 2.6, phL: Math.abs(M.fit.b[2] / M.fit.se[2]) > 2.6, alm: Math.abs(M.fit.b[3] / M.fit.se[3]) > 2.6, recM: Math.abs(M.fit.b[5] / M.fit.se[5]) > 2.6, ebc: Math.abs(M.fit.b[6] / M.fit.se[6]) > 2.6 } : {};
+    const Ma = modeloArr(ctx), Mr = modeloRdf(ctx);
+    if (Ma) { if (Math.abs(Ma.fit.b[1] / Ma.fit.se[1]) > 2.6) enModelo.o2 = true; if (Math.abs(Ma.fit.b[3] / Ma.fit.se[3]) > 2.6) enModelo.alm = true; }
+    if (Mr) { if (Math.abs(Mr.fit.b[1] / Mr.fit.se[1]) > 2.6) enModelo.bu = true; if (Math.abs(Mr.fit.b[2] / Mr.fit.se[2]) > 2.6) enModelo.o2 = true; if (Math.abs(Mr.fit.b[3] / Mr.fit.se[3]) > 2.6) enModelo.wortT = true; }
     const sinEfecto = FACTORES.filter((f, i) => cel[i].every((c) => !c || !(c.p < 0.01 && Math.abs(c.r) >= 0.1)) && !enModelo[f[1]]).map((f) => f[0]);
-    const nombre = { viab: 'Viabilidad de la levadura', tll: 'Tiempo de llenado', cons: 'Consistencia de la levadura', eoDev: 'Desvío del extracto original', vol: 'Volumen de llenado' };
+    const nombre = { viab: 'Viabilidad de la levadura', tll: 'Tiempo de llenado', cons: 'Consistencia de la levadura', eoDev: 'Desvío del extracto original', vol: 'Volumen de llenado', o2: 'Oxígeno del mosto (ppm)', wortT: 'Temperatura del mosto', bu: 'Amargor (BU)', tSie: 'Temperatura de siembra', phMosto: 'pH del mosto', presion: 'Presión de llenado' };
     const espurias = M ? Object.keys(M.extra).filter((k) => Math.abs(M.extra[k]) < 2.6 && real.some((x) => x.f === nombre[k] && x.o.startsWith('Velocidad'))).map((k) => nombre[k]) : [];
     const l = `Cada celda de color es una relación real (p &lt; 0,01) entre un factor y un resultado, ya descontando lo normal de cada marca y tamaño de tanque: <b>azul = al subir el factor baja el resultado, gris oscuro = sube</b>; las celdas vacías son «no se ve relación». ` +
       (real.length ? `Las más fuertes: ${real.slice(0, 5).map((x) => `<b>${esc(lc(x.f))}</b> con ${esc(lc(x.o))} (ρ = ${fmt(x.r, 2)})`).join('; ')}. ` : '<b>Ninguna relación clara.</b> ') +
@@ -127,13 +153,45 @@
     const M = modeloVel(ctx);
     if (!M) return vacio(UI, 'Qué mueve la velocidad', 'Se necesitan al menos 120 fermentaciones con levadura identificada.');
     const L = M.L, fit = M.fit;
-    const def = [['Una generación más de la levadura', 1, '1 gen'], ['+0,1 de pH de la levadura', 2, '+0,1 pH'], ['Un día más guardada la levadura', 3, '1 día'], ['Fermentar en tanque grande', 4, 'tanque grande']];
+    const def = [['Una generación más de la levadura', 1, '1 gen'], ['+0,1 de pH de la levadura', 2, '+0,1 pH'], ['Un día más guardada la levadura', 3, '1 día'], ['Fermentar en tanque grande', 4, 'tanque grande'], ['+1 millón de células/ml a las 3 h', 5, '+1 M/ml'], ['+1 de color (EBC) del mosto', 6, '+1 EBC']];
     const f = def.map(([label, i, u]) => ({ label, u, b: fit.b[i], ic: 1.96 * fit.se[i], t: fit.b[i] / (fit.se[i] || 1) }));
     const l = `Horas hasta 75 % de atenuación que se asocian a cada factor, <b>controlando los demás a la vez</b> (R² = ${fmt(fit.r2, 2)}, ${L.length} fermentaciones). Negativo = fermenta más rápido. ` +
       f.map((x) => `<b>${esc(lc(x.label))}</b>: ${sg(x.b, 1)} h (±${fmt(x.ic, 1)})${Math.abs(x.t) > 2.6 ? ' *' : ''}`).join('; ') + '. ' +
-      `<b>Qué hacer:</b> <b>usar la levadura pronto</b> (cada día guardada se asocia a unas ${fmt(Math.max(0, f[2].b), 1)} h más de fermentación; ${fmt((L.filter((r) => r.alm > 3).length / L.length) * 100, 0)} % de los lotes se siembra con levadura de más de 3 días); medir y vigilar el <b>pH de la levadura</b> (más alto = más rápido); y entender qué hacen distinto los <b>tanques grandes</b> para replicarlo. <b>Cautela:</b> son asociaciones, y R² bajo significa que queda mucha variación sin explicar (el resto no está en estos datos, p. ej. temperatura).`;
+      `<b>Qué hacer:</b> <b>usar la levadura pronto</b> (cada día guardada se asocia a unas ${fmt(Math.max(0, f[2].b), 1)} h más de fermentación; ${fmt((L.filter((r) => r.alm > 3).length / L.length) * 100, 0)} % de los lotes se siembra con levadura de más de 3 días); medir y vigilar el <b>pH de la levadura</b> (más alto = más rápido); vigilar el <b>recuento de células a las 3 horas</b> (más células = más rápido; es la siembra efectiva); y entender qué hacen distinto los <b>tanques grandes</b> para replicarlo. <b>Cautela:</b> son asociaciones, y R² bajo significa que queda mucha variación sin explicar (el resto no está en estos datos; lo más probable es la temperatura de fermentación del tanque, que no se registra).`;
     return An1.tarjeta(UI, 'Qué mueve la velocidad de fermentación', 'Efecto en horas de cada factor, controlando los otros. * = diferencia real. Barra = estimación, intervalo de confianza 95 % en el texto.',
-      C.barsH({ w: W.half, h: 240, unit: 'h', toolbar: true, id: 'ch-fx-efec', data: f.map((x) => ({ label: x.label, value: r1(x.b), color: Math.abs(x.t) > 2.6 ? (x.b < 0 ? POS : WARN) : MUTED })), refs: [{ y: 0, label: '', dashed: false }] }), l, { tono: 'ok' });
+      C.barsH({ w: W.half, h: 300, unit: 'h', toolbar: true, id: 'ch-fx-efec', data: f.map((x) => ({ label: x.label, value: r1(x.b), color: Math.abs(x.t) > 2.6 ? (x.b < 0 ? POS : WARN) : MUTED })), refs: [{ y: 0, label: '', dashed: false }] }), l, { tono: 'ok' });
+  }
+
+  /* ======================= 2b. Arranque y extracto final ======================= */
+  function efectosArr(ctx, UI) {
+    const M = modeloArr(ctx);
+    if (!M) return vacio(UI, 'Qué mueve el arranque', 'Se necesitan al menos 120 fermentaciones con oxígeno y recuento de células.');
+    const b = M.fit.b, se = M.fit.se, tt = (i) => b[i] / (se[i] || 1);
+    const def = [['+1 ppm de oxígeno del mosto', 1], ['+0,1 de pH de la levadura', 2], ['Un día más guardada la levadura', 3], ['Una generación más', 4], ['+1 millón de células/ml a las 3 h', 5]].map(([label, i]) => ({ label, b: b[i], ic: 1.96 * se[i], t: tt(i) }));
+    const real = def.filter((x) => Math.abs(x.t) > 2.6);
+    const l = `Horas hasta 15 % de atenuación (el arranque de la fermentación) que se asocian a cada factor, controlando los demás (R² = ${fmt(M.fit.r2, 2)}, ${M.L.length} fermentaciones). ` +
+      (real.length ? `Con efecto claro: ${real.map((x) => `<b>${esc(lc(x.label))}</b>: ${sg(x.b, 1)} h (±${fmt(x.ic, 1)})`).join('; ')}. ` : 'Ningún factor se separa con claridad. ') +
+      (def[0].b > 0 && Math.abs(def[0].t) > 2.6 ? '<b>El oxígeno más alto se asocia a un arranque más lento</b>, al revés de lo que se esperaría; conviene revisar cómo y dónde se mide el oxígeno y si hay un valor óptimo en vez de «más es mejor». ' : '') +
+      `<b>Qué hacer:</b> mirar la relación entre el oxígeno y el arranque lote por lote antes de cambiar la aireación; es una asociación, no una causa comprobada.`;
+    return An1.tarjeta(UI, 'Qué mueve el arranque', 'Efecto en horas hasta 15 % de cada factor, controlando los otros.',
+      C.barsH({ w: W.half, h: 260, unit: 'h', toolbar: true, id: 'ch-fx-arr', data: def.map((x) => ({ label: x.label, value: r1(x.b), color: Math.abs(x.t) > 2.6 ? (x.b < 0 ? POS : WARN) : MUTED })), refs: [{ y: 0, label: '', dashed: false }] }), l, { tono: real.length ? 'warn' : '' });
+  }
+  function efectosRdf(ctx, UI) {
+    const M = modeloRdf(ctx);
+    if (!M) return vacio(UI, 'Qué mueve el extracto final', 'Se necesitan al menos 120 lotes cerrados con amargor y oxígeno.');
+    const b = M.fit.b, se = M.fit.se, def = [['+10 BU de amargor', 1, 10], ['+1 ppm de oxígeno del mosto', 2, 1], ['+1 °C de temperatura del mosto', 3, 1]].map(([label, i, k]) => ({ label, b: b[i] * k, ic: 1.96 * se[i] * k, t: b[i] / (se[i] || 1) }));
+    const real = def.filter((x) => Math.abs(x.t) > 2.6), L = lotes(ctx).rows.filter((r) => r.oRdf != null);
+    const om = (() => {
+      const g = new Map(); L.forEach((r) => { const k = Math.floor(r.t / (7 * DAY)); if (!g.has(k)) g.set(k, []); g.get(k).push(r.oRdf); });
+      const gr = [...g.values()].filter((v) => v.length >= 3), N = sum(gr.map((v) => v.length)), k = gr.length; if (k < 3 || N - k < 10) return null;
+      const all = [].concat(...gr), gm = mean(all), ssb = sum(gr.map((v) => v.length * (mean(v) - gm) ** 2)), sst = sum(all.map((y) => (y - gm) ** 2)), msw = (sst - ssb) / (N - k);
+      return Math.max(0, (ssb - (k - 1) * msw) / (sst + msw));
+    })();
+    const l = `Diferencia del extracto final frente a lo normal de su marca y tamaño de tanque (°P), solo en lotes ya cerrados, según cada factor (R² = ${fmt(M.fit.r2, 2)}). ` +
+      (real.length ? `Con efecto claro: ${real.map((x) => `<b>${esc(lc(x.label))}</b>: ${sg(x.b, 2)} °P (±${fmt(x.ic, 2)})`).join('; ')}. ` : 'Ningún factor se separa con claridad. ') +
+      (om != null && om > 0.15 ? `Aun así, <b>cerca de ${fmt(om * 100, 0)} % de lo que queda se parece entre lotes de la misma semana</b>: algo que cambia por semana y no está en el Excel, como el lote de malta y adjuntos o la calibración del laboratorio. ` : '') + `<b>Qué hacer:</b> registrar el lote de malta y adjuntos y quién y con qué equipo mide el extracto final.`;
+    return An1.tarjeta(UI, 'Qué mueve el extracto final', 'Efecto en °P de cada factor, controlando los otros. Lotes cerrados.',
+      C.barsH({ w: W.half, h: 220, unit: '°P', toolbar: true, id: 'ch-fx-rdf', yFmt: (v) => fmt(v, 2), data: def.map((x) => ({ label: x.label, value: An1.round(x.b, 3), color: Math.abs(x.t) > 2.6 ? (x.b < 0 ? POS : WARN) : MUTED })), refs: [{ y: 0, label: '', dashed: false }] }), l, { tono: real.length ? 'ok' : '' });
   }
 
   /* ======================= 3. Agua: qué actividad la mueve ======================= */
@@ -214,11 +272,11 @@
 
   function render(ctx, UI) {
     return `<p class="an-lead-s">Qué factores afectan a qué resultado, y cuáles no. Todo el histórico (estas relaciones necesitan muestra grande). Son asociaciones: indican por dónde investigar, no prueban la causa.</p>` +
-      mapa(ctx, UI) + UI.grid([efectos(ctx, UI), trasiegos(ctx, UI)], 2) + renderAgua(ctx, UI) + recuperacion(ctx, UI);
+      mapa(ctx, UI) + UI.grid([efectos(ctx, UI), efectosArr(ctx, UI)], 2) + UI.grid([efectosRdf(ctx, UI), trasiegos(ctx, UI)], 2) + renderAgua(ctx, UI) + recuperacion(ctx, UI);
   }
 
   AN.registrar({ id: 'factores', label: 'Qué afecta a qué', orden: 1.7, render });
-  B.lotesFx = lotes; B.modeloVel = modeloVel; B.ols = ols; B.grupoEquipo = grupoEquipo;
+  B.lotesFx = lotes; B.modeloVel = modeloVel; B.modeloArr = modeloArr; B.modeloRdf = modeloRdf; B.ols = ols; B.grupoEquipo = grupoEquipo;
 
   A.PlanPasos = A.PlanPasos || [];
   A.PlanPasos.push((ctx) => {
