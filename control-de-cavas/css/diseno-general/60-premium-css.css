@@ -1,0 +1,100 @@
+/* Capa premium: fondo vivo, cristal, animaciones. Se carga al final; si falla, la app se ve como antes. */
+:root{
+  --pm-amber:#F5A524; --pm-amber-2:#FFD27A; --pm-gold:#C98A0B;
+  --pm-orb1:rgba(10,132,255,.32); --pm-orb2:rgba(245,165,36,.36); --pm-orb3:rgba(120,90,255,.22);
+  --pm-glass:rgba(255,255,255,.66); --pm-glass-b:rgba(255,255,255,.75); --pm-edge:rgba(255,255,255,.9);
+  --pm-shadow:0 1px 2px rgba(20,20,40,.05),0 10px 30px -12px rgba(20,30,70,.18);
+  --pm-shadow-h:0 2px 4px rgba(20,20,40,.06),0 24px 48px -16px rgba(20,30,70,.28);
+  --pm-ease:cubic-bezier(.22,1,.36,1);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --pm-orb1:rgba(10,132,255,.28); --pm-orb2:rgba(245,165,36,.20); --pm-orb3:rgba(140,90,255,.22);
+  --pm-glass:rgba(32,32,38,.62); --pm-glass-b:rgba(44,44,50,.7); --pm-edge:rgba(255,255,255,.10);
+  --pm-shadow:0 1px 2px rgba(0,0,0,.4),0 14px 36px -14px rgba(0,0,0,.7);
+  --pm-shadow-h:0 2px 4px rgba(0,0,0,.5),0 28px 56px -16px rgba(0,0,0,.85);
+}}
+:root[data-theme="dark"]{
+  --pm-orb1:rgba(10,132,255,.28); --pm-orb2:rgba(245,165,36,.20); --pm-orb3:rgba(140,90,255,.22);
+  --pm-glass:rgba(32,32,38,.62); --pm-glass-b:rgba(44,44,50,.7); --pm-edge:rgba(255,255,255,.10);
+  --pm-shadow:0 1px 2px rgba(0,0,0,.4),0 14px 36px -14px rgba(0,0,0,.7);
+  --pm-shadow-h:0 2px 4px rgba(0,0,0,.5),0 28px 56px -16px rgba(0,0,0,.85);
+}
+
+/* Fondo: orbes que se mueven despacio + burbujas (canvas) */
+.pm-bg{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;background:var(--bg)}
+.pm-orb{position:absolute;border-radius:50%;filter:blur(70px);will-change:transform;opacity:.9}
+.pm-orb.o1{width:56vmax;height:56vmax;left:-14vmax;top:-18vmax;background:radial-gradient(circle,var(--pm-orb1),transparent 65%);animation:pm-d1 26s ease-in-out infinite alternate}
+.pm-orb.o2{width:48vmax;height:48vmax;right:-16vmax;top:12vh;background:radial-gradient(circle,var(--pm-orb2),transparent 65%);animation:pm-d2 32s ease-in-out infinite alternate}
+.pm-orb.o3{width:44vmax;height:44vmax;left:22vw;bottom:-24vmax;background:radial-gradient(circle,var(--pm-orb3),transparent 65%);animation:pm-d3 38s ease-in-out infinite alternate}
+@keyframes pm-d1{to{transform:translate3d(14vw,10vh,0) scale(1.15)}}
+@keyframes pm-d2{to{transform:translate3d(-12vw,14vh,0) scale(.9)}}
+@keyframes pm-d3{to{transform:translate3d(10vw,-12vh,0) scale(1.12)}}
+.pm-bubbles{position:absolute;inset:0;width:100%;height:100%;opacity:.55}
+html.pm-on:root:root body,html.pm-on:root:root .app,html.pm-on:root:root .main,html.pm-on:root:root main.content{background:transparent !important}
+
+/* Barra de progreso de scroll */
+.pm-prog{position:fixed;left:0;top:0;height:3px;width:100%;z-index:9999;transform-origin:0 50%;transform:scaleX(0);background:linear-gradient(90deg,var(--accent),var(--pm-amber));pointer-events:none}
+
+/* Tarjetas de cristal */
+html.pm-on .pl-kpi,html.pm-on .acard,html.pm-on .cavas-tank,html.pm-on .an-card,html.pm-on .an-filtros,
+html.pm-on .turn-card,html.pm-on .fv-progress,html.pm-on .pl-rev,html.pm-on .pl-acc,html.pm-on .v35-in,
+html.pm-on .hz-doc,html.pm-on .wk-card{
+  background:var(--pm-glass);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);
+  border:1px solid var(--pm-edge);box-shadow:var(--pm-shadow);
+  transition:transform .5s var(--pm-ease),box-shadow .5s var(--pm-ease),border-color .3s;
+}
+@media (hover:hover){
+  html.pm-on .pl-kpi:hover,html.pm-on .acard:hover,html.pm-on .cavas-tank:hover,html.pm-on .an-card:hover,html.pm-on .v35-in:hover{
+    transform:translateY(-4px);box-shadow:var(--pm-shadow-h);border-color:color-mix(in srgb,var(--pm-amber) 45%,var(--pm-edge));
+  }
+}
+html.pm-on .cavas-tank:active,html.pm-on .acard:active,html.pm-on .pl-kpi:active{transform:scale(.985)}
+
+/* Brillo dorado en el borde superior de las tarjetas importantes */
+html.pm-on .pl-kpi,html.pm-on .an-card{position:relative;overflow:hidden}
+html.pm-on .pl-kpi::before,html.pm-on .an-card::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,var(--pm-amber),transparent);opacity:0;transition:opacity .5s}
+html.pm-on .pl-kpi:hover::before,html.pm-on .an-card:hover::before{opacity:.9}
+
+/* Títulos con degradado */
+html.pm-on h1{background:linear-gradient(120deg,var(--ink) 30%,var(--pm-gold) 120%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+html.pm-on .app h1,html.pm-on .an-hero h1{letter-spacing:-.025em}
+
+/* Botones: brillo al pasar y rebote al pulsar */
+html.pm-on .btn,html.pm-on button.primary,html.pm-on .fab{position:relative;overflow:hidden;transition:transform .25s var(--pm-ease),box-shadow .3s}
+html.pm-on .btn::after,html.pm-on button.primary::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);transform:translateX(-120%);transition:transform .7s var(--pm-ease)}
+@media (hover:hover){html.pm-on .btn:hover::after,html.pm-on button.primary:hover::after{transform:translateX(120%)}
+  html.pm-on .btn:hover{transform:translateY(-1px)}}
+html.pm-on .btn:active,html.pm-on .fab:active{transform:scale(.95)}
+html.pm-on .fab{box-shadow:0 10px 30px -6px color-mix(in srgb,var(--accent) 70%,transparent);animation:pm-pulse 3.2s ease-in-out infinite}
+@keyframes pm-pulse{50%{box-shadow:0 10px 38px -2px color-mix(in srgb,var(--pm-amber) 65%,transparent)}}
+
+/* Entrada al hacer scroll (solo si el script de animación está activo) */
+html.pm-on [data-pm]{opacity:0;transform:translateY(22px) scale(.985);filter:blur(4px)}
+html.pm-on [data-pm].pm-in{opacity:1;transform:none;filter:none;transition:opacity .8s var(--pm-ease),transform .8s var(--pm-ease),filter .8s var(--pm-ease),box-shadow .5s var(--pm-ease),border-color .3s;transition-delay:var(--pm-d,0s)}
+html.pm-on [data-pm].pm-done{transition-delay:0s}
+
+/* Cambio de pantalla */
+html.pm-on main.content>*{animation:pm-page .6s var(--pm-ease) both}
+@keyframes pm-page{from{opacity:0;transform:translateY(14px)}}
+
+/* Semáforos con latido suave */
+html.pm-on .tq-chip.rev,html.pm-on .tq-chip.revisar{animation:pm-beat 2.4s ease-in-out infinite}
+@keyframes pm-beat{50%{box-shadow:0 0 0 6px color-mix(in srgb,#ff453a 18%,transparent)}}
+
+/* Barra de desplazamiento fina */
+html.pm-on ::-webkit-scrollbar{width:10px;height:10px}
+html.pm-on ::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--ink) 22%,transparent);border-radius:10px;border:3px solid transparent;background-clip:padding-box}
+html.pm-on ::selection{background:color-mix(in srgb,var(--pm-amber) 40%,transparent)}
+
+/* Celular: menos desenfoque (más rápido) y sin desbordar */
+@media (max-width:700px){
+  html.pm-on .pl-kpi,html.pm-on .acard,html.pm-on .cavas-tank,html.pm-on .an-card,html.pm-on .turn-card{backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .pm-orb{filter:blur(50px)}
+  html.pm-on body{overflow-x:hidden}
+}
+@media (prefers-reduced-motion:reduce){
+  .pm-orb,.pm-bubbles{animation:none}
+  html.pm-on [data-pm]{opacity:1;transform:none;filter:none}
+  html.pm-on main.content>*,html.pm-on .fab,html.pm-on .tq-chip{animation:none}
+}
+@media print{.pm-bg,.pm-prog{display:none}html.pm-on [data-pm]{opacity:1;transform:none;filter:none}}

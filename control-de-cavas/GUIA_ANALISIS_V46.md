@@ -67,3 +67,6 @@ Las notas y casillas de «Preguntas que llevaría a planta» y la comparación �
 
 ## Hallazgos y guía (dentro del programa)
 La pestaña **Hallazgos y guía** muestra el informe de hallazgos, el fundamento de la prueba de llenado (+30 Hl) y esta guía, para revisarlos sin salir del programa (con botón de imprimir/PDF). Es una foto del 9-oct-2026: se regenera desde los .md con el script que crea `71k-datos-hallazgos.js`. Las comprobaciones con cálculo en vivo (merma FV–SV del mismo lote, aseo previo, calidad del mosto, viabilidad vs velocidad y prueba completa del llenado) están al final de **Qué afecta a qué**, en «Más comprobaciones» (`71j-plan-comprobaciones-js.js`).
+
+## Capa visual premium
+`css/diseno-general/60-premium-css.css` y `js/interfaz/79-premium-js.js` agregan fondo animado (orbes y burbujas), tarjetas de cristal, aparición escalonada, contadores, barra de progreso y botones con brillo. Son solo decoración: si se quitan sus dos líneas de `index.html`, el programa vuelve a verse como antes. Respeta «reducir movimiento» del sistema.
