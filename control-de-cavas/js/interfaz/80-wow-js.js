@@ -18,7 +18,7 @@
   const PAL = {
     ferm: ['#FFE08A', '#FFB020', '#D96A00'], mad: ['#9BE7FF', '#3AA0FF', '#1B4FD8'], levadura: ['#FFF1C9', '#E8C77A', '#B98A3E'], vacio: null
   };
-  function vessel(kind, tone, fill, calm, glow) {
+  function vessel(kind, tone, fill, calm, glow, div) {
     const g = GEO[kind], id = 'pmv' + (++uid), p = PAL[tone];
     const H = g.bot - g.top, f = Math.max(0, Math.min(1, fill)), y = g.bot - f * H;
     const w = (dy, amp, op, cls) => `<g class="pmv-w ${cls}" opacity="${op}" transform="translate(0 ${dy})"><path d="M-50 0 q12.5 -${amp} 25 0 t25 0 t25 0 t25 0 t25 0 t25 0 t25 0 t25 0 V140 H-50Z" fill="url(#${id}l)"/></g>`;
@@ -35,8 +35,12 @@
     const ticks = g.ticks.map((t) => `<path d="M${g.x1 - 1} ${t} h5" stroke-width="1.4" opacity=".5"/>`).join('');
     return `<svg viewBox="${g.vb}" class="pmv ${p ? 'on' : 'off'}" style="${glow ? `--vc:${glow}` : ''}" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
       <defs><clipPath id="${id}c"><path d="${g.body}"/></clipPath></defs>${liquid}
-      <path class="pmv-glass" d="${g.body}" stroke-width="2.2" ${p ? '' : 'stroke-dasharray="3 4"'}/>
-      ${g.dome ? `<path d="${g.dome}" stroke-width="2.2"/>` : ''}<path d="${g.extra}" stroke-width="1.8" opacity=".7"/>
+      <defs><linearGradient id="${id}s" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5b6372"/><stop offset=".18" stop-color="#d9dee8"/><stop offset=".42" stop-color="#8e97a8"/><stop offset=".72" stop-color="#4a5262"/><stop offset="1" stop-color="#9aa3b4"/></linearGradient>
+        <linearGradient id="${id}t" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4f6fa"/><stop offset=".5" stop-color="#8d96a8"/><stop offset="1" stop-color="#e2e6ee"/></linearGradient></defs>
+      <path class="pmv-glass" d="${g.body}" fill="url(#${id}s)" fill-opacity="${p ? '.16' : '.28'}" stroke="url(#${id}t)" stroke-width="2.6" ${p ? '' : 'stroke-dasharray="3 4"'}/>
+      ${div ? `<path d="M${g.x0 + 2} ${((g.top + g.bot) / 2).toFixed(1)} H${g.x1 - 2}" stroke="#fff" stroke-width="1" stroke-dasharray="2 3" opacity=".55"/>` : ''}
+      <ellipse class="pmv-floor" cx="${(g.x0 + g.x1) / 2}" cy="${g.bot + (kind === 'tank' ? 14 : 8)}" rx="${(g.x1 - g.x0) / 2 + 4}" ry="3" fill="#000" opacity=".35" stroke="none"/>
+      ${g.dome ? `<path d="${g.dome}" stroke="url(#${id}t)" stroke-width="2.6"/>` : ''}<path d="${g.extra}" stroke="url(#${id}t)" stroke-width="1.8" opacity=".85"/>
       ${g.ring ? `<circle cx="${g.ring[0]}" cy="${g.ring[1]}" r="${g.ring[2]}" stroke-width="1.4" opacity=".5"/><circle cx="${g.ring[0]}" cy="${g.ring[1]}" r="2" stroke-width="1.4" opacity=".5"/>` : ''}
       ${ticks}<rect x="${g.hl}" y="${g.top + 6}" width="4" height="${H * 0.55}" rx="2" fill="url(#${id}g)" stroke="none"/></svg>`;
   }
@@ -159,7 +163,7 @@
     const old = btn.querySelector('svg.studio-vessel'); const color = btn.style.getPropertyValue('--collector-status') || '#e8c77a';
     const slots = [...btn.querySelectorAll('.collector-slots span')]; const used = slots.filter((s) => !/disponible/i.test(s.textContent)).length;
     const fill = slots.length ? Math.max(used ? 0.28 : 0, used / slots.length * 0.86) : 0;
-    const svg = vessel('col', 'levadura', fill, true, color);
+    const svg = vessel('col', 'levadura', fill, true, color, slots.length > 1);
     const tmp = document.createElement('div'); tmp.innerHTML = svg; const el = tmp.firstElementChild; el.classList.add('pmv-col');
     if (old) { old.style.display = 'none'; old.after(el); } else btn.prepend(el);
     btn.style.setProperty('--tone', color);
@@ -178,12 +182,12 @@
     const host = document.querySelector('main.content > *:first-child'); if (!host || document.querySelector('.pm-hero')) return;
     const wave = (c, d) => `<svg class="pm-hw ${c}" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 60 q75 -40 150 0 t150 0 t150 0 t150 0 t150 0 t150 0 t150 0 t150 0 t150 0 V120 H0Z" style="animation-duration:${d}s"/></svg>`;
     const s = document.createElement('section'); s.className = 'pm-hero';
-    s.innerHTML = `<div class="pm-hero-in"><p class="pm-eye"><i></i> CONTROL DE CAVAS · EN VIVO</p><h1><span class="pm-w">${saludo()},</span> <span class="pm-w acc">planta</span><span class="pm-w">.</span></h1>
+    s.innerHTML = `<div class="pm-hero-in"><p class="pm-eye"><i></i> Control de Cavas · en vivo</p><h1><span class="pm-w">${saludo()},</span> <span class="pm-w acc">planta</span><span class="pm-w">.</span></h1>
       <p class="pm-sub">Fermentación, maduración, levaduras y agua en una sola vista. Cada tanque respira: míralos llenarse.</p>
-      <div class="pm-cta"><a class="btn pm-glow" href="#/tanques">Ver tanques</a><a class="btn" href="#/analisis">Análisis</a><a class="btn" href="#/colectores">Levaduras</a></div></div>
+      <div class="pm-cta"><a class="btn pm-glow" href="#/tanques">Ver tanques</a><a class="pm-lnk" href="#/analisis">Ver el análisis</a><a class="pm-lnk" href="#/colectores">Levaduras</a></div></div>
       <div class="pm-hero-glass">${vessel('tank', 'ferm', 0.78, false, '#ffa31a')}</div><div class="pm-clock"><b data-pm-clock>--:--</b><small></small></div>${wave('w1', 11)}${wave('w2', 17)}`;
     host.parentNode.insertBefore(s, host);
-    const st = statsDOM(); if (st) { const b = document.createElement('div'); b.className = 'pm-stats'; b.innerHTML = st; s.querySelector('.pm-hero-in').appendChild(b); }
+    const st = statsDOM(); if (st) { const b = document.createElement('div'); b.className = 'pm-stats'; b.innerHTML = st; s.querySelector('.pm-hero-glass').after(b); }
     const fecha = new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' }); s.querySelector('.pm-clock small').textContent = fecha;
     const tick = () => { const c = s.querySelector('[data-pm-clock]'); if (!c || !document.contains(s)) return; c.textContent = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }); setTimeout(tick, 15000); }; tick();
   }
@@ -231,7 +235,7 @@
     decorarCosechas(); hero();
   }
 
-  addEventListener('scroll', () => { const g = document.querySelector('.pm-hero-glass'); if (g) g.style.setProperty('--py', Math.min(60, scrollY * 0.12) + 'px'); }, { passive: true });
+  addEventListener('scroll', () => { const g = document.querySelector('.pm-hero-glass'); if (g) { const k = Math.min(1, scrollY / 700); g.style.setProperty('--py', (scrollY * 0.18).toFixed(1) + 'px'); g.style.setProperty('--hs', (1 - k * 0.22).toFixed(3)); g.style.setProperty('--ho', (1 - k * 0.7).toFixed(3)); } }, { passive: true });
   try {
     try { if (!localStorage.getItem('cavas.wowtema')) { localStorage.setItem('cavas.wowtema', '1'); if (window.App && App.Tema) App.Tema.set('dark'); } } catch (e) {}
     root.classList.add('pm-wow');

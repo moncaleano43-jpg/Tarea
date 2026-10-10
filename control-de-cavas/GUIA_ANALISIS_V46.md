@@ -82,3 +82,6 @@ Cada tarjeta de FV/SV muestra el avance hacia la recolección, el volumen, la le
 - **Temp.:** temperatura frente a la banda de fermentación (solo si hay dato).
 - **Maduración (SV):** horas frente al mínimo.
 Las franjas «casi sale» son las constantes `CERCA` (0,20) y `CERCA_MAX` (0,85) en `js/interfaz/80-wow-js.js`. El tiempo en FV usa la hora actual del equipo: con un Excel atrasado saldrá en rojo de más. En Levaduras, cada cosecha y cada colector usan su propio estado del programa, también como semáforo.
+
+## Acabado «Apple»
+`css/diseno-general/62-apple-css.css` y `js/interfaz/81-apple-js.js`: negro profundo con tarjetas gris Apple, tipografía del sistema (SF en equipos Apple, Inter en el resto), barra superior de cristal fino, portada centrada con el tanque como producto que se reduce al hacer scroll, cifras grandes, botones píldora con azul de sistema, enlaces con «›», tanques y colectores con acabado de acero y menú con iconos tipo SF Symbols. Quitar esas líneas de `index.html` revierte solo este acabado.

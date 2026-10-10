@@ -1,0 +1,71 @@
+/* Acabado «Apple»: negro profundo, tipografía SF, barra de cristal, héroe centrado, botones píldora, azul de sistema. */
+html:root[data-theme="dark"]{
+  --bg:#000; --surface:#1d1d1f; --surface-2:#2a2a2d; --sunken:#323236;
+  --ink:#f5f5f7; --ink-2:#d2d2d7; --muted:#86868b; --faint:#424245;
+  --line:rgba(255,255,255,.10); --line-2:rgba(255,255,255,.06);
+  --accent:#2997ff; --accent-ink:#fff; --accent-soft:rgba(41,151,255,.16);
+  --pm-glass:rgba(29,29,31,.72); --pm-glass-b:rgba(42,42,45,.78); --pm-edge:rgba(255,255,255,.09);
+  --pm-orb1:rgba(41,151,255,.20); --pm-orb2:rgba(255,159,10,.16); --pm-orb3:rgba(191,90,242,.14);
+  --side:#000; --side-2:#1d1d1f;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Inter","Helvetica Neue",Arial,sans-serif;
+}
+html:root[data-theme="dark"] .pm-bg{background:#000}
+html:root[data-theme="dark"] .pm-bg::after{opacity:.5}
+html.pm-wow body{font-family:var(--sans)!important;letter-spacing:-.011em}
+
+/* Barra superior: cristal fino de 48 px como en apple.com */
+html.pm-wow header.topbar{background:transparent!important;border-bottom:0!important;box-shadow:none!important;isolation:isolate}
+html.pm-wow header.topbar::before{content:"";position:absolute;inset:0;z-index:-1;background:rgba(22,22,23,.72);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid rgba(255,255,255,.08)}
+:root[data-theme="light"] header.topbar::before{background:rgba(251,251,253,.8)}
+html.pm-wow header.topbar a,html.pm-wow header.topbar .studio-more{font-size:12px;letter-spacing:-.005em;color:rgba(245,245,247,.8)}
+html.pm-wow header.topbar a:hover{color:#fff}
+html.pm-wow header.topbar a[aria-current="page"]{color:#fff}
+html.pm-wow header.topbar a[aria-current="page"]::after,html.pm-wow header.topbar a.on::after{display:none!important}
+
+/* Botones píldora y enlaces con chevrón */
+html.pm-wow .btn{border-radius:980px;font-weight:500;letter-spacing:-.01em}
+html.pm-wow:root[data-theme="dark"] .btn.primary,html.pm-wow:root[data-theme="dark"] .btn.pri,html.pm-wow:root[data-theme="dark"] .btn.pm-glow{background:#0071e3;background-image:none;color:#fff;box-shadow:none;border-color:transparent}
+html.pm-wow:root[data-theme="dark"] .btn.pri:hover,html.pm-wow:root[data-theme="dark"] .btn.pm-glow:hover{background:#0077ed}
+.pm-lnk{color:#2997ff;text-decoration:none;font-size:clamp(15px,1.5vw,19px);display:inline-flex;align-items:center;gap:2px;padding:10px 6px}
+.pm-lnk::after{content:"›";font-size:1.3em;line-height:1;transition:transform .3s cubic-bezier(.22,1,.36,1)}
+.pm-lnk:hover{text-decoration:underline}.pm-lnk:hover::after{transform:translateX(3px)}
+html.pm-wow .fab{background:#0071e3;animation:none;box-shadow:0 8px 28px -8px rgba(0,113,227,.8)}
+
+/* Héroe centrado, sin caja: el tanque como producto */
+html.pm-wow .pm-hero{background:none!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;flex-direction:column;align-items:center;text-align:center;overflow:visible;min-height:0;padding:clamp(24px,5vw,56px) 0 0}
+html.pm-wow .pm-hero-in{max-width:900px;display:flex;flex-direction:column;align-items:center}
+html.pm-wow .pm-eye{color:#ff9f0a;letter-spacing:.02em;font-size:clamp(14px,1.6vw,19px);font-weight:600;text-transform:none}
+html.pm-wow .pm-hero h1{font-size:clamp(44px,9vw,104px);line-height:1.02;letter-spacing:-.05em;font-weight:700;margin:0 0 18px}
+html.pm-wow .pm-sub{color:#86868b;font-size:clamp(17px,2.2vw,26px);line-height:1.3;letter-spacing:-.015em;max-width:760px;font-weight:500}
+html.pm-wow .pm-cta{justify-content:center;gap:14px;align-items:center;margin-top:6px}
+html.pm-wow .pm-clock{display:none}
+html.pm-wow .pm-hw{display:none}
+html.pm-wow .pm-hero-glass{position:relative;right:auto;top:auto;transform:none;animation:none;width:clamp(150px,22vw,260px);margin:clamp(24px,4vw,48px) auto 0;scale:var(--hs,1);opacity:var(--ho,1);translate:0 var(--py,0);will-change:scale,opacity,translate}
+html.pm-wow .pm-hero-glass::after{content:"";position:absolute;left:50%;bottom:-24px;width:140%;height:60px;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(255,159,10,.45),transparent 70%);filter:blur(10px);z-index:-1}
+html.pm-wow .pm-stats{justify-content:center;gap:0;margin:clamp(30px,5vw,60px) 0 0;width:100%;max-width:820px}
+html.pm-wow .pm-st{flex:1 1 0;flex-direction:column;gap:2px;background:none;border:0;border-radius:0;backdrop-filter:none;padding:6px 18px;position:relative}
+html.pm-wow .pm-st+.pm-st::before{content:"";position:absolute;left:0;top:14%;bottom:14%;width:1px;background:rgba(255,255,255,.12)}
+html.pm-wow .pm-st i{display:none}
+html.pm-wow .pm-st b{font-size:clamp(40px,7vw,72px);font-weight:700;letter-spacing:-.05em;line-height:1;background:linear-gradient(180deg,#fff,var(--c));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+html.pm-wow .pm-st span{font-size:clamp(12px,1.4vw,16px);letter-spacing:0;text-transform:none;color:#86868b;font-weight:500}
+
+/* Títulos de página y tarjetas */
+html.pm-wow .page-h h1,html.pm-wow .yeast-flow h1{font-size:clamp(40px,6vw,72px);font-weight:700;letter-spacing:-.05em}
+html.pm-wow .page-h p{font-size:clamp(17px,2vw,24px);color:#86868b;font-weight:500;letter-spacing:-.015em}
+html.pm-wow .pl-kpi,html.pm-wow .acard,html.pm-wow .cavas-tank,html.pm-wow .an-card,html.pm-wow .flow-collector,html.pm-wow .v35-in{border-radius:28px!important}
+html.pm-wow .cavas-home .studio-home-card{border-radius:28px}
+html.pm-wow .pl-kpi b,html.pm-wow .pl-k{font-size:clamp(30px,4vw,48px)!important;font-weight:700;letter-spacing:-.045em}
+html.pm-wow .cavas-tank h2,html.pm-wow .flow-collector-top>b{font-weight:700;letter-spacing:-.04em;font-size:28px}
+html.pm-wow .sec-h h2{font-size:clamp(24px,3vw,34px);font-weight:700;letter-spacing:-.04em}
+
+/* Menú lateral con iconos tipo SF Symbols */
+html.pm-wow #nav a svg.i,html.pm-wow .anav a svg.i{width:20px;height:20px;stroke-width:1.6}
+html.pm-wow aside.side{-webkit-backdrop-filter:saturate(180%) blur(30px);backdrop-filter:saturate(180%) blur(30px);background:rgba(22,22,23,.78)!important;border-right:1px solid rgba(255,255,255,.08)}
+html.pm-wow aside.side a{border-radius:12px}
+
+/* Aparición estilo Apple: más lenta y suave */
+html.pm-on [data-pm].pm-in{transition-duration:1s,1s,1s,.5s,.3s}
+html.pm-wow .cavas-tank:hover,html.pm-wow .flow-collector:hover{box-shadow:0 30px 80px -30px rgba(0,0,0,.9)}
+@media(max-width:700px){html.pm-wow .pm-hero h1{font-size:clamp(40px,12vw,56px)}html.pm-wow .pm-st{padding:6px 8px}}
+html:root:root.pm-wow .pm-cta .btn.pm-glow{background:#0071e3!important;color:#fff!important;border:0!important;padding:12px 22px;font-size:17px}
+html:root:root.pm-wow .pm-cta .btn.pm-glow:hover{background:#0077ed!important}
