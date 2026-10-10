@@ -39,7 +39,7 @@
     addEventListener('scroll', () => { if (pend) return; pend = true; requestAnimationFrame(() => { pend = false; const h = root.scrollHeight - innerHeight; prog.style.transform = `scaleX(${h > 0 ? Math.min(1, scrollY / h) : 0})`; }); }, { passive: true });
 
     // Aparición escalonada
-    const SEL = '.pl-kpi,.acard,.cavas-tank,.an-card,.an-filtros,.turn-card,.fv-progress,.pl-rev,.pl-acc,.v35-in,.hz-doc,.wk-card';
+    const SEL = '.pl-kpi,.acard,.cavas-tank,.an-card,.an-filtros,.turn-card,.fv-progress,.pl-rev,.pl-acc,.v35-in,.hz-doc,.wk-card,.pm-hero';
     const io = 'IntersectionObserver' in window ? new IntersectionObserver((es) => {
       es.forEach((e) => { if (!e.isIntersecting) return; const el = e.target; io.unobserve(el); el.classList.add('pm-in'); setTimeout(() => el.classList.add('pm-done'), 1200); contar(el); });
     }, { rootMargin: '0px 0px -6% 0px', threshold: 0.06 }) : null;

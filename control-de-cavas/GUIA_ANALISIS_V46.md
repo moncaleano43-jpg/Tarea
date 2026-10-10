@@ -70,3 +70,6 @@ La pestaña **Hallazgos y guía** muestra el informe de hallazgos, el fundamento
 
 ## Capa visual premium
 `css/diseno-general/60-premium-css.css` y `js/interfaz/79-premium-js.js` agregan fondo animado (orbes y burbujas), tarjetas de cristal, aparición escalonada, contadores, barra de progreso y botones con brillo. Son solo decoración: si se quitan sus dos líneas de `index.html`, el programa vuelve a verse como antes. Respeta «reducir movimiento» del sistema.
+
+## Capa «wow» (noche cervecera)
+`css/diseno-general/61-wow-css.css` y `js/interfaz/80-wow-js.js`: intro animada (una vez por sesión; clic para saltarla; `?nointro` la desactiva), tema oscuro por defecto, portada animada en Inicio, tanques y colectores dibujados como recipientes con líquido y burbujas animadas (nivel según el volumen), inclinación 3D y luz que sigue al cursor. Solo presentación: quitar sus dos líneas de `index.html` la desactiva.
