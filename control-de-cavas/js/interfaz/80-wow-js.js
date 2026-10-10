@@ -98,10 +98,10 @@
     if (card.querySelector('.pmt-sems') || !window.App || !App.Cavas) return;
     const go = card.dataset.go || ''; const m = /detalle\/(\d+)/.exec(go); if (!m) return;
     let r = App.Cavas.records().find((x) => x.tq === +m[1]); if (!r) return;
-    const out = [];
+    const out = []; let worst = '';
     try {
       if (App.ExcelCavas && App.ExcelCavas.enrich) r = App.ExcelCavas.enrich(r);
-      const item = (nombre, estado, valor, ayuda) => out.push(`<div class="pmt-sem" title="${(ayuda || '').replace(/"/g, '')}">${sem(estado, nombre + ': ' + (ayuda || ''))}<b>${nombre}</b><small>${valor || ''}</small></div>`);
+      const item = (nombre, estado, valor, ayuda) => { out.push(`<div class="pmt-sem" data-s="${estado}" title="${(ayuda || '').replace(/"/g, '')}"><b>${nombre}</b><small>${valor || ''}</small></div>`); if (estado === 'red') worst = 'red'; else if (estado === 'yellow' && worst !== 'red') worst = 'yellow'; else if (estado === 'green' && !worst) worst = 'green'; }
       if (ferm) {
         const a = App.FVDetail.analyze(App.FVDetail.model(r), r), h = App.TankOperations.harvest(r, a);
         const est = h.color === 'done' ? 'green' : h.color === 'neutral' ? 'idle' : h.color;
@@ -121,13 +121,15 @@
       }
     } catch (e) { return; }
     if (!out.length) return;
+    if (worst) card.dataset.worst = worst;
     const w = document.createElement('div'); w.className = 'pmt-sems'; w.innerHTML = out.join('');
     const where = card.querySelector('.pmt-info'); if (where) where.before(w); else { const dl = card.querySelector('dl'); if (dl) dl.before(w); }
   }
 
   function semaforoPill(pill, estado) {
     if (pill.dataset.pms) return; pill.dataset.pms = '1';
-    const txt = pill.textContent.trim(); pill.classList.add('pm-pill-sem'); pill.title = txt; pill.innerHTML = sem(estado, txt) + `<span class="pm-sr">${txt}</span>`;
+    pill.dataset.s = estado; pill.title = pill.textContent.trim();
+    const box = pill.closest('article, button.flow-collector'); if (box) box.dataset.s = estado;
   }
   function decorarCosechas() {
     document.querySelectorAll('.harvest-list article').forEach((a) => {

@@ -75,7 +75,7 @@ La pestaña **Hallazgos y guía** muestra el informe de hallazgos, el fundamento
 `css/diseno-general/61-wow-css.css` y `js/interfaz/80-wow-js.js`: intro animada (una vez por sesión; clic para saltarla; `?nointro` la desactiva), tema oscuro por defecto, portada animada en Inicio, tanques y colectores dibujados como recipientes con líquido y burbujas animadas (nivel según el volumen), inclinación 3D y luz que sigue al cursor. Solo presentación: quitar sus dos líneas de `index.html` la desactiva.
 
 ### Tarjetas de tanque y semáforos
-Cada tarjeta de FV/SV muestra el avance hacia la recolección, el volumen, la levadura, el llenado y varios **semáforos por especificación**: **verde** = dentro de parámetros, **amarillo** = cerca del límite, **rojo** = fuera.
+Cada tarjeta de FV/SV muestra el avance hacia la recolección, el volumen, la levadura, el llenado y varios **cuadros de color por especificación** (el color llena todo el cuadro, sin dibujo de semáforo): **verde** = dentro de parámetros, **amarillo** = cerca del límite, **rojo** = fuera. El borde de la tarjeta toma el peor estado. En Levaduras, las cosechas y los colectores se pintan completos con el color de su estado.
 - **Cosecha:** la ventana que ya usa el programa (T0 → +12 h verde, +12 → +24 h amarillo, pasado +24 h rojo; gris si aún no hay T0; verde si ya se registró).
 - **Tiempo en FV:** horas desde el llenado frente a «Tiempo max en FV» de la hoja de especificaciones de la marca; amarillo desde 85 % del máximo.
 - **E.O.:** extracto original frente a su banda (inf–sup); amarillo en el 20 % exterior de la banda a cada lado.
