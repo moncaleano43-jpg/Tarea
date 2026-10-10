@@ -68,9 +68,9 @@
     let prog = '';
     if (ini && fin && fin > ini) {
       const tot = (fin - ini) / 36e5, el = (now - ini) / 36e5, pct = Math.max(0, Math.min(100, el / tot * 100));
-      const left = (fin - now) / 36e5; const est = left < 0 ? 'red' : left < HORAS_PRONTO ? 'yellow' : 'green';
-      prog = `<div class="pmt-prog" data-s="${est}"><div class="pmt-prog-h"><span>${mad ? 'Maduración' : 'Fermentación'}</span><b>${Math.round(pct)} %</b></div><div class="pmt-bar"><i style="--w:${pct.toFixed(1)}%"></i></div>
-        <div class="pmt-prog-f"><span>${dur(el)} en tanque</span><span class="pmt-harv">${sem(est, left < 0 ? 'Recolección vencida hace ' + dur(left) : 'Recolección en ' + dur(left))}<em>${left < 0 ? 'hace ' + dur(left) : 'en ' + dur(left)}</em></span></div></div>`;
+      const left = (fin - now) / 36e5;
+      prog = `<div class="pmt-prog"><div class="pmt-prog-h"><span>${mad ? 'Maduración' : 'Fermentación'}</span><b>${Math.round(pct)} %</b></div><div class="pmt-bar"><i style="--w:${pct.toFixed(1)}%"></i></div>
+        <div class="pmt-prog-f"><span>${dur(el)} en tanque</span><span class="pmt-harv"><em>Recolección ${left < 0 ? 'hace ' + dur(left) : 'en ' + dur(left)}</em></span></div></div>`;
     } else if (ini) {
       prog = `<div class="pmt-prog" data-s="idle"><div class="pmt-prog-h"><span>En tanque</span><b>${dur((now - ini) / 36e5)}</b></div></div>`;
     }
@@ -82,6 +82,49 @@
     const w = document.createElement('div'); w.className = 'pmt-info'; w.innerHTML = prog + (tiles.length ? `<div class="pmt-tiles">${tiles.join('')}</div>` : '');
     dl.after(w); dl.classList.add('pmt-dl-hide');
   }
+
+  /* ---------- Semáforo por especificación: verde = dentro, amarillo = cerca del límite, rojo = fuera ---------- */
+  const CERCA = 0.2;      // franja de «casi sale»: 20 % del ancho de la banda en cada borde
+  const CERCA_MAX = 0.85; // límites de un solo lado (p. ej. tiempo máximo): amarillo desde 85 % del máximo
+  function estadoBanda(v, inf, sup) {
+    if (v == null || !isFinite(v)) return 'idle';
+    if (inf != null && sup != null && sup > inf) { if (v < inf || v > sup) return 'red'; const m = (sup - inf) * CERCA; return v < inf + m || v > sup - m ? 'yellow' : 'green'; }
+    if (sup != null) return v > sup ? 'red' : v > sup * CERCA_MAX ? 'yellow' : 'green';
+    if (inf != null) return v < inf ? 'red' : v < inf * (2 - CERCA_MAX) ? 'yellow' : 'green';
+    return 'idle';
+  }
+  const rangoTxt = (sp) => !sp ? '' : sp.inf != null && sp.sup != null ? `${sp.inf}–${sp.sup}` : sp.sup != null ? `máx. ${sp.sup}` : `mín. ${sp.inf}`;
+  function semaforosTanque(card, ferm) {
+    if (card.querySelector('.pmt-sems') || !window.App || !App.Cavas) return;
+    const go = card.dataset.go || ''; const m = /detalle\/(\d+)/.exec(go); if (!m) return;
+    let r = App.Cavas.records().find((x) => x.tq === +m[1]); if (!r) return;
+    const out = [];
+    try {
+      if (App.ExcelCavas && App.ExcelCavas.enrich) r = App.ExcelCavas.enrich(r);
+      const item = (nombre, estado, valor, ayuda) => out.push(`<div class="pmt-sem" title="${(ayuda || '').replace(/"/g, '')}">${sem(estado, nombre + ': ' + (ayuda || ''))}<b>${nombre}</b><small>${valor || ''}</small></div>`);
+      if (ferm) {
+        const a = App.FVDetail.analyze(App.FVDetail.model(r), r), h = App.TankOperations.harvest(r, a);
+        const est = h.color === 'done' ? 'green' : h.color === 'neutral' ? 'idle' : h.color;
+        item('Cosecha', est, h.color === 'done' ? 'registrada' : h.color === 'neutral' ? 'sin T0' : h.color === 'green' ? 'ventana verde' : h.color === 'yellow' ? 'ventana amarilla' : 'fuera de tiempo', `${h.label}. ${h.help}`);
+        const f = (App.ExcelCavas.data().fermentations || []).find((x) => x.lote === r.consecutive);
+        const marca = (f && f.marca) || r.brand, sp = App.Hist2 && App.Hist2.spec ? App.Hist2.spec(marca) : null;
+        if (sp) {
+          const t0 = r.fvRegistration && r.fvRegistration.fillEnd || r.fill; const ini = t0 ? +App.U.parseDT(t0) : NaN;
+          if (sp.tmax && isFinite(ini)) { const hs = (Date.now() - ini) / 36e5; item('Tiempo en FV', estadoBanda(hs, null, sp.tmax.sup), `${Math.round(hs)} / ${sp.tmax.sup} h`, `Tiempo máximo en fermentador según la hoja de especificaciones (${sp.tmax.sup} h). Se calcula con la hora actual.`); }
+          if (sp.eo && f && f.eo != null) item('E.O.', estadoBanda(+f.eo, sp.eo.inf, sp.eo.sup), `${(+f.eo).toFixed(2)} °P`, `Extracto original frente a la especificación ${rangoTxt(sp.eo)} °P.`);
+          const tmp = parseFloat(String(r.temperature || '').replace(',', '.'));
+          if (sp.tfer && isFinite(tmp)) item('Temp.', estadoBanda(tmp, sp.tfer.inf, sp.tfer.sup), `${tmp} °C`, `Temperatura frente a la especificación de fermentación ${rangoTxt(sp.tfer)} °C.`);
+        }
+      } else if (App.PlatformRules && App.PlatformRules.maturity) {
+        const mt = App.PlatformRules.maturity(r);
+        if (mt && mt.minimum) item('Maduración', mt.elapsed >= mt.minimum ? 'green' : 'idle', `${Math.round(mt.elapsed)} / ${Math.round(mt.minimum)} h`, `Horas de maduración frente al mínimo (${Math.round(mt.minimum)} h).`);
+      }
+    } catch (e) { return; }
+    if (!out.length) return;
+    const w = document.createElement('div'); w.className = 'pmt-sems'; w.innerHTML = out.join('');
+    const where = card.querySelector('.pmt-info'); if (where) where.before(w); else { const dl = card.querySelector('dl'); if (dl) dl.before(w); }
+  }
+
   function semaforoPill(pill, estado) {
     if (pill.dataset.pms) return; pill.dataset.pms = '1';
     const txt = pill.textContent.trim(); pill.classList.add('pm-pill-sem'); pill.title = txt; pill.innerHTML = sem(estado, txt) + `<span class="pm-sr">${txt}</span>`;
@@ -107,7 +150,7 @@
     const fill = ferm || mad ? (isFinite(vol) && vol > 0 ? Math.min(0.97, 0.18 + vol / 5200 * 0.8) : 0.7) : 0;
     art.innerHTML = vessel('tank', ferm ? 'ferm' : mad ? 'mad' : 'vacio', fill, mad, ferm ? '#ffa31a' : mad ? '#3aa0ff' : '#7b8499');
     card.style.setProperty('--tone', ferm ? '#ffa31a' : mad ? '#3aa0ff' : '#7b8499');
-    if (ferm || mad) infoTanque(card, ferm, mad);
+    if (ferm || mad) { infoTanque(card, ferm, mad); semaforosTanque(card, ferm); }
   }
   function decorarColector(btn) {
     if (btn.dataset.pmv) return; btn.dataset.pmv = '1';

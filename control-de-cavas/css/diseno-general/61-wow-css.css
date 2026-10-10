@@ -177,3 +177,12 @@ html.pm-wow .pm-hero h1{background:none;-webkit-text-fill-color:currentColor;col
 html.pm-wow .pm-hero h1 .pm-w.acc{-webkit-text-fill-color:transparent}
 .pm-sem[data-s="idle"] i{background:#6b7694}
 @keyframes pm-chase{0%,60%,100%{opacity:.55}25%{opacity:1;box-shadow:0 0 8px rgba(190,200,230,.7)}}
+
+/* Semáforos por especificación dentro de la tarjeta */
+.pmt-sems{display:flex;flex-wrap:wrap;gap:8px}
+.pmt-sem{flex:1 1 calc(50% - 8px);min-width:128px;display:grid;grid-template-columns:auto 1fr;grid-template-areas:"l n" "l v";column-gap:10px;align-items:center;padding:9px 10px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06)}
+.pmt-sem .pm-sem{grid-area:l;flex-direction:column;padding:6px 5px;gap:4px;border-radius:99px}
+.pmt-sem .pm-sem i{width:9px;height:9px}
+.pmt-sem b{grid-area:n;font-size:12.5px;letter-spacing:-.01em;align-self:end}
+.pmt-sem small{grid-area:v;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;align-self:start}
+:root[data-theme="light"] .pmt-sem{background:rgba(20,30,50,.04);border-color:rgba(20,30,50,.08)}
