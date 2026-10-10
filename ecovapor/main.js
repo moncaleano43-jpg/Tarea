@@ -1,15 +1,9 @@
 (function () {
   'use strict';
 
-  // ======= EDITA AQUÍ =======
-  // Número de WhatsApp con código de país, solo dígitos (ej. Colombia: 573001234567)
-  var WHATSAPP = '573000000000';
-  // ==========================
-
   document.documentElement.classList.add('js');
 
   function safe(fn, name) { try { fn(); } catch (e) { if (window.console) console.warn('init fail:', name, e); } }
-  function wa(text) { return 'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent(text); }
 
   function initNav() {
     var nav = document.getElementById('nav');
@@ -43,22 +37,6 @@
       io.observe(el);
     });
     setTimeout(function () { els.forEach(show); }, 6000);
-  }
-
-  function initWA() {
-    document.querySelectorAll('[data-wa]').forEach(function (a) {
-      a.href = wa(a.getAttribute('data-wa'));
-      a.target = '_blank'; a.rel = 'noopener';
-    });
-    var form = document.getElementById('quote');
-    form.addEventListener('submit', function (e) {
-      e.preventDefault();
-      var n = document.getElementById('fName').value.trim();
-      var s = document.getElementById('fService').value;
-      var m = document.getElementById('fMsg').value.trim();
-      var t = 'Hola Ecovapor, soy ' + (n || 'un cliente') + '. Quiero cotizar: ' + s + '.' + (m ? ' ' + m : '');
-      window.open(wa(t), '_blank', 'noopener');
-    });
   }
 
   function initTilt() {
@@ -136,7 +114,6 @@
 
   safe(initNav, 'nav');
   safe(initReveal, 'reveal');
-  safe(initWA, 'whatsapp');
   safe(initTilt, 'tilt');
   safe(initCompare, 'compare');
   safe(initSteam, 'steam');
