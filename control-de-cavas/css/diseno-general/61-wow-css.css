@@ -57,7 +57,6 @@ html.pm-wow:root[data-theme="dark"] .btn.primary,html.pm-wow:root[data-theme="da
 .pm-eye i{width:9px;height:9px;border-radius:50%;background:#34d399;box-shadow:0 0 0 0 rgba(52,211,153,.7);animation:pm-live 1.8s infinite}
 @keyframes pm-live{70%{box-shadow:0 0 0 10px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
 .pm-hero h1{font-size:clamp(36px,6vw,74px);line-height:1.02;letter-spacing:-.045em;margin:0 0 16px;font-weight:700}
-.pm-hero h1 span{background:linear-gradient(100deg,#ffd36e,#ff9f0a 60%,#ff6a3d);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;background-size:200% 100%;animation:pm-shine 6s linear infinite}
 @keyframes pm-shine{to{background-position:-200% 0}}
 .pm-sub{color:var(--ink-2);font-size:clamp(15px,1.6vw,18px);line-height:1.55;margin:0 0 24px;max-width:520px}
 .pm-cta{display:flex;gap:10px;flex-wrap:wrap}
@@ -101,3 +100,80 @@ html.pm-wow .sec-h h2::before{content:"";position:absolute;left:0;top:.18em;bott
 
 @media(max-width:700px){.cavas-tank-art{width:70px!important;height:98px!important}.flow-collector .pmv-col{width:78px;height:114px}}
 @media (prefers-reduced-motion:reduce){.pm-hero h1 span,.pm-hero-glass,.pm-hw path,.pmv-w,.pmv-b,.pm-eye i{animation:none!important}.pm-intro{display:none}}
+
+/* ======== Ronda 2: semáforos, información en tarjetas, acabados premium ======== */
+html{scroll-behavior:smooth}
+.pm-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Semáforo: tres luces, solo la del estado se enciende */
+.pm-sem{display:inline-flex;flex-direction:row;align-items:center;gap:5px;padding:5px 8px;border-radius:99px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.08);box-shadow:inset 0 1px 3px rgba(0,0,0,.5)}
+:root[data-theme="light"] .pm-sem{background:rgba(20,30,50,.08);border-color:rgba(20,30,50,.1)}
+.pm-sem i{width:11px;height:11px;border-radius:50%;background:#2a3042;opacity:.55;transition:all .4s}
+.pm-sem i.r{--l:#ff453a}.pm-sem i.y{--l:#ffb020}.pm-sem i.g{--l:#30d158}
+.pm-sem[data-s="red"] i.r,.pm-sem[data-s="yellow"] i.y,.pm-sem[data-s="green"] i.g{background:radial-gradient(circle at 35% 30%,#fff9,var(--l) 45%);opacity:1;box-shadow:0 0 10px var(--l),0 0 22px color-mix(in srgb,var(--l) 55%,transparent)}
+.pm-sem[data-s="red"] i.r{animation:pm-sem 1.3s ease-in-out infinite}
+.pm-sem[data-s="idle"] i{opacity:.35}
+@keyframes pm-sem{50%{box-shadow:0 0 4px var(--l),0 0 10px color-mix(in srgb,var(--l) 40%,transparent);transform:scale(.88)}}
+.turn-pill.pm-pill-sem{background:transparent!important;border:0!important;padding:0!important;min-height:0}
+.harvest-list article .pm-sem{padding:9px 12px}.harvest-list article .pm-sem i{width:16px;height:16px}
+
+/* Panel de información dentro de la tarjeta del tanque */
+.cavas-tank .pmt-dl-hide{display:none!important}
+.pmt-info{display:grid;gap:12px;margin-top:4px}
+.pmt-prog{padding:13px 14px;border-radius:16px;background:linear-gradient(135deg,rgba(255,255,255,.05),rgba(255,255,255,.015));border:1px solid rgba(255,255,255,.07)}
+.pmt-prog-h,.pmt-prog-f{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.pmt-prog-h span{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.pmt-prog-h b{font-size:20px;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.pmt-bar{height:7px;border-radius:9px;background:rgba(255,255,255,.08);overflow:hidden;margin:9px 0}
+.pmt-bar i{display:block;height:100%;width:var(--w);border-radius:9px;background:linear-gradient(90deg,var(--tone,#ffa31a),color-mix(in srgb,var(--tone,#ffa31a) 55%,#fff));box-shadow:0 0 12px color-mix(in srgb,var(--tone,#ffa31a) 70%,transparent);transform-origin:0 50%;animation:pm-fill 1.4s cubic-bezier(.22,1,.36,1) both}
+@keyframes pm-fill{from{transform:scaleX(0)}}
+.pmt-bar.thin{height:4px;margin:7px 0 0}
+.pmt-prog[data-s="red"] .pmt-bar i{background:linear-gradient(90deg,#ff7a45,#ff453a);box-shadow:0 0 12px rgba(255,69,58,.6)}
+.pmt-prog[data-s="yellow"] .pmt-bar i{background:linear-gradient(90deg,#ffd36e,#ffb020)}
+.pmt-prog-f{font-size:12px;color:var(--muted)}
+.pmt-harv{display:inline-flex;align-items:center;gap:8px}.pmt-harv em{font-style:normal;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.pmt-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.pmt-t{padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06)}
+.pmt-t small{display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.pmt-t b{display:block;margin-top:3px;font-size:17px;letter-spacing:-.02em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.pmt-t b u{text-decoration:none;font-size:11px;font-weight:500;color:var(--muted);margin-left:5px}
+.pmt-t b.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px}
+:root[data-theme="light"] .pmt-prog,:root[data-theme="light"] .pmt-t{background:rgba(20,30,50,.04);border-color:rgba(20,30,50,.08)}
+
+/* Borde de luz que gira al pasar sobre tanques y colectores */
+.cavas-tank::before,.flow-collector::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.2px;background:conic-gradient(from var(--ang,0deg),transparent 0 55%,var(--tone,#ffa31a) 75%,#fff 82%,transparent 92%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:0;transition:opacity .5s;pointer-events:none;animation:pm-ang 4s linear infinite;z-index:2}
+@property --ang{syntax:"<angle>";initial-value:0deg;inherits:false}
+@keyframes pm-ang{to{--ang:360deg}}
+.cavas-tank:hover::before,.flow-collector:hover::before{opacity:1}
+
+/* Grano de película: da textura premium al fondo */
+.pm-bg::before{z-index:1}
+html.pm-wow body::after{content:"";position:fixed;inset:0;z-index:2;pointer-events:none;opacity:.055;mix-blend-mode:overlay;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+
+/* Portada: palabras que suben, cifras vivas, paralaje */
+.pm-w{display:inline-block;opacity:0;transform:translateY(.5em);filter:blur(8px);animation:pm-il .9s cubic-bezier(.22,1,.36,1) forwards}
+.pm-w:nth-child(1){animation-delay:.1s}.pm-w:nth-child(2){animation-delay:.22s}.pm-w:nth-child(3){animation-delay:.34s}
+.pm-hero h1 .pm-w.acc{animation:pm-il .9s .22s cubic-bezier(.22,1,.36,1) forwards,pm-shine 6s 1.2s linear infinite;background:linear-gradient(100deg,#ffd36e,#ff9f0a 60%,#ff6a3d);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;background-size:200% 100%}
+.pm-hero-glass{translate:0 var(--py,0)}
+.pm-stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}
+.pm-st{--c:#fff;display:flex;align-items:center;gap:10px;padding:11px 16px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid color-mix(in srgb,var(--c) 30%,rgba(255,255,255,.08));backdrop-filter:blur(8px)}
+.pm-st i{width:9px;height:9px;border-radius:50%;background:var(--c);box-shadow:0 0 12px var(--c)}
+.pm-st b{font-size:24px;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.pm-st span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.pm-mag{transition:transform .15s ease-out!important}
+
+/* Tarjetas de tanque más aireadas */
+.cavas-tank{padding:20px!important;gap:14px}
+.cavas-tank .cavas-brand{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0}
+.cavas-tank .turn-card{border-radius:16px}
+.cavas-card-bottom{border-top:1px solid rgba(255,255,255,.06);padding-top:12px}
+@media(max-width:700px){.pm-stats{margin-top:18px}.pm-st{padding:9px 12px}.pm-st b{font-size:20px}}
+
+.pm-sem[data-s="idle"] i{animation:pm-chase 2.4s ease-in-out infinite;background:#3a4258}
+.pm-sem[data-s="idle"] i.y{animation-delay:.4s}.pm-sem[data-s="idle"] i.g{animation-delay:.8s}
+@keyframes pm-chase{0%,60%,100%{opacity:.3}25%{opacity:.9;box-shadow:0 0 8px rgba(160,175,205,.6)}}
+.harvest-list article{border-bottom:1px solid rgba(255,255,255,.07)!important}
+html.pm-wow .pm-hero h1{background:none;-webkit-text-fill-color:currentColor;color:var(--ink)}
+html.pm-wow .pm-hero h1 .pm-w.acc{-webkit-text-fill-color:transparent}
+.pm-sem[data-s="idle"] i{background:#6b7694}
+@keyframes pm-chase{0%,60%,100%{opacity:.55}25%{opacity:1;box-shadow:0 0 8px rgba(190,200,230,.7)}}

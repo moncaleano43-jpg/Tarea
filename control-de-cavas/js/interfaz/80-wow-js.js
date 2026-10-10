@@ -41,6 +41,64 @@
       ${ticks}<rect x="${g.hl}" y="${g.top + 6}" width="4" height="${H * 0.55}" rx="2" fill="url(#${id}g)" stroke="none"/></svg>`;
   }
 
+
+  /* ---------- Semáforos (en lugar de texto) ---------- */
+  const SEM_TXT = { red: 'Atención / fuera de tiempo', yellow: 'Próximo / revisar', green: 'En tiempo', idle: 'En espera' };
+  function sem(estado, titulo) {
+    return `<span class="pm-sem" data-s="${estado}" role="img" aria-label="${(titulo || SEM_TXT[estado]).replace(/"/g, '')}" title="${(titulo || SEM_TXT[estado]).replace(/"/g, '')}"><i class="r"></i><i class="y"></i><i class="g"></i></span>`;
+  }
+  const HORAS_PRONTO = 24; // cosecha: amarillo si faltan menos de estas horas
+  function fechaDM(t) {
+    const m = /(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\s+(\d{1,2}):(\d{2})/.exec(String(t || '')); if (!m) return null;
+    const now = new Date(); let y = m[3] ? +m[3] : now.getFullYear(); if (y < 100) y += 2000;
+    let d = new Date(y, +m[2] - 1, +m[1], +m[4], +m[5]);
+    if (!m[3] && d - now > 200 * 864e5) d = new Date(y - 1, +m[2] - 1, +m[1], +m[4], +m[5]);
+    return d;
+  }
+  function dur(h) { h = Math.abs(h); if (h < 1) return Math.max(1, Math.round(h * 60)) + ' min'; if (h < 48) return Math.round(h) + ' h'; const d = Math.floor(h / 24), r = Math.round(h - d * 24); return d + ' d' + (r && d < 10 ? ' ' + r + ' h' : ''); }
+  function celdas(card) { const m = {}; card.querySelectorAll('dl > div').forEach((d) => { const k = (d.querySelector('dt') || {}).textContent, v = (d.querySelector('dd') || {}).textContent; if (k) m[k.trim().toLowerCase()] = (v || '').trim(); }); return m; }
+  function infoTanque(card, ferm, mad) {
+    if (card.querySelector('.pmt-info')) return;
+    const c = celdas(card), now = Date.now();
+    const ini = fechaDM(c['llenado']), fin = fechaDM(c['recolección'] || c['recoleccion']);
+    const vol = num(c['volumen inventario']); const lev = c['levadura']; const temp = c['temperatura'];
+    const has = (v) => v && !/sin dato/i.test(v);
+    const tiles = [];
+    // Progreso hacia la recolección
+    let prog = '';
+    if (ini && fin && fin > ini) {
+      const tot = (fin - ini) / 36e5, el = (now - ini) / 36e5, pct = Math.max(0, Math.min(100, el / tot * 100));
+      const left = (fin - now) / 36e5; const est = left < 0 ? 'red' : left < HORAS_PRONTO ? 'yellow' : 'green';
+      prog = `<div class="pmt-prog" data-s="${est}"><div class="pmt-prog-h"><span>${mad ? 'Maduración' : 'Fermentación'}</span><b>${Math.round(pct)} %</b></div><div class="pmt-bar"><i style="--w:${pct.toFixed(1)}%"></i></div>
+        <div class="pmt-prog-f"><span>${dur(el)} en tanque</span><span class="pmt-harv">${sem(est, left < 0 ? 'Recolección vencida hace ' + dur(left) : 'Recolección en ' + dur(left))}<em>${left < 0 ? 'hace ' + dur(left) : 'en ' + dur(left)}</em></span></div></div>`;
+    } else if (ini) {
+      prog = `<div class="pmt-prog" data-s="idle"><div class="pmt-prog-h"><span>En tanque</span><b>${dur((now - ini) / 36e5)}</b></div></div>`;
+    }
+    if (isFinite(vol) && vol > 0) tiles.push(`<div class="pmt-t"><small>Volumen</small><b>${vol.toLocaleString('es-CO', { maximumFractionDigits: 0 })}<u>Hl</u></b><div class="pmt-bar thin"><i style="--w:${Math.min(100, vol / 4800 * 100).toFixed(0)}%"></i></div></div>`);
+    if (has(lev)) tiles.push(`<div class="pmt-t"><small>Levadura</small><b class="mono">${lev}</b></div>`);
+    if (has(temp)) tiles.push(`<div class="pmt-t"><small>Temperatura</small><b>${temp}</b></div>`);
+    if (ini) tiles.push(`<div class="pmt-t"><small>Llenado</small><b>${ini.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}<u>${ini.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</u></b></div>`);
+    const dl = card.querySelector('dl'); if (!dl || (!prog && !tiles.length)) return;
+    const w = document.createElement('div'); w.className = 'pmt-info'; w.innerHTML = prog + (tiles.length ? `<div class="pmt-tiles">${tiles.join('')}</div>` : '');
+    dl.after(w); dl.classList.add('pmt-dl-hide');
+  }
+  function semaforoPill(pill, estado) {
+    if (pill.dataset.pms) return; pill.dataset.pms = '1';
+    const txt = pill.textContent.trim(); pill.classList.add('pm-pill-sem'); pill.title = txt; pill.innerHTML = sem(estado, txt) + `<span class="pm-sr">${txt}</span>`;
+  }
+  function decorarCosechas() {
+    document.querySelectorAll('.harvest-list article').forEach((a) => {
+      const pill = a.querySelector('.turn-pill'); if (!pill) return;
+      const e = a.classList.contains('red') ? 'red' : a.classList.contains('yellow') ? 'yellow' : a.classList.contains('green') ? 'green' : 'idle';
+      semaforoPill(pill, e);
+    });
+    document.querySelectorAll('button.flow-collector').forEach((b) => {
+      const pill = b.querySelector('.flow-collector-top .turn-pill'); if (!pill) return;
+      const st = b.dataset.vesselStatus; const e = st === 'late' ? 'red' : st === 'soon' ? 'yellow' : st === 'healthy' ? 'green' : st === 'recover' || st === 'discard' ? 'yellow' : /fuera|vencid/i.test(pill.textContent) ? 'red' : 'idle';
+      semaforoPill(pill, e);
+    });
+  }
+
   function decorarTanque(card) {
     if (card.dataset.pmv) return; card.dataset.pmv = '1';
     const art = card.querySelector('.cavas-tank-art'); if (!art) return;
@@ -49,6 +107,7 @@
     const fill = ferm || mad ? (isFinite(vol) && vol > 0 ? Math.min(0.97, 0.18 + vol / 5200 * 0.8) : 0.7) : 0;
     art.innerHTML = vessel('tank', ferm ? 'ferm' : mad ? 'mad' : 'vacio', fill, mad, ferm ? '#ffa31a' : mad ? '#3aa0ff' : '#7b8499');
     card.style.setProperty('--tone', ferm ? '#ffa31a' : mad ? '#3aa0ff' : '#7b8499');
+    if (ferm || mad) infoTanque(card, ferm, mad);
   }
   function decorarColector(btn) {
     if (btn.dataset.pmv) return; btn.dataset.pmv = '1';
@@ -62,17 +121,24 @@
   }
 
   /* ---------- Portada de Inicio ---------- */
+  function statsDOM() {
+    const val = (re) => { const el = [...document.querySelectorAll('main.content *')].find((e) => !e.children.length && re.test(e.textContent.trim())); const p = el && el.previousElementSibling; const n = p ? parseInt(p.textContent, 10) : NaN; return isFinite(n) ? n : null; };
+    const f = val(/^Fermentadores$/i), m = val(/^Maduradores$/i), l = val(/^Sin operaci[oó]n$/i); if (f == null && m == null) return '';
+    const o = (n, c, t) => n == null ? '' : `<div class="pm-st" style="--c:${c}"><i></i><b data-n="${n}">${n}</b><span>${t}</span></div>`;
+    return o(f, '#ffa31a', 'fermentando') + o(m, '#3aa0ff', 'madurando') + o(l, '#8e97ab', 'libres');
+  }
   function saludo() { const h = new Date().getHours(); return h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches'; }
   function hero() {
     if (!/^#\/?(inicio)?$/.test(location.hash || '#/inicio') && location.hash !== '') return;
     const host = document.querySelector('main.content > *:first-child'); if (!host || document.querySelector('.pm-hero')) return;
     const wave = (c, d) => `<svg class="pm-hw ${c}" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 60 q75 -40 150 0 t150 0 t150 0 t150 0 t150 0 t150 0 t150 0 t150 0 t150 0 V120 H0Z" style="animation-duration:${d}s"/></svg>`;
     const s = document.createElement('section'); s.className = 'pm-hero';
-    s.innerHTML = `<div class="pm-hero-in"><p class="pm-eye"><i></i> CONTROL DE CAVAS · EN VIVO</p><h1>${saludo()}, <span>planta</span>.</h1>
+    s.innerHTML = `<div class="pm-hero-in"><p class="pm-eye"><i></i> CONTROL DE CAVAS · EN VIVO</p><h1><span class="pm-w">${saludo()},</span> <span class="pm-w acc">planta</span><span class="pm-w">.</span></h1>
       <p class="pm-sub">Fermentación, maduración, levaduras y agua en una sola vista. Cada tanque respira: míralos llenarse.</p>
       <div class="pm-cta"><a class="btn pm-glow" href="#/tanques">Ver tanques</a><a class="btn" href="#/analisis">Análisis</a><a class="btn" href="#/colectores">Levaduras</a></div></div>
       <div class="pm-hero-glass">${vessel('tank', 'ferm', 0.78, false, '#ffa31a')}</div><div class="pm-clock"><b data-pm-clock>--:--</b><small></small></div>${wave('w1', 11)}${wave('w2', 17)}`;
     host.parentNode.insertBefore(s, host);
+    const st = statsDOM(); if (st) { const b = document.createElement('div'); b.className = 'pm-stats'; b.innerHTML = st; s.querySelector('.pm-hero-in').appendChild(b); }
     const fecha = new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' }); s.querySelector('.pm-clock small').textContent = fecha;
     const tick = () => { const c = s.querySelector('[data-pm-clock]'); if (!c || !document.contains(s)) return; c.textContent = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }); setTimeout(tick, 15000); }; tick();
   }
@@ -106,14 +172,21 @@
     }, { passive: true });
     addEventListener('pointerout', (e) => { const c = e.target.closest && e.target.closest('.cavas-tank,.flow-collector'); if (c && !c.contains(e.relatedTarget)) c.style.transform = ''; }, { passive: true });
     document.body.insertAdjacentHTML('beforeend', '<div class="pm-cursor" aria-hidden="true"></div>');
+    document.addEventListener('pointermove', (e) => {
+      const b = e.target.closest && e.target.closest('.pm-cta .btn,.cavas-card-bottom .btn,.btn.pri');
+      document.querySelectorAll('.pm-mag').forEach((x) => { if (x !== b) { x.classList.remove('pm-mag'); x.style.transform = ''; } });
+      if (!b) return; const r = b.getBoundingClientRect(); b.classList.add('pm-mag');
+      b.style.transform = `translate(${(e.clientX - r.left - r.width / 2) * 0.18}px,${(e.clientY - r.top - r.height / 2) * 0.28}px)`;
+    }, { passive: true });
   }
 
   function pasada() {
     document.querySelectorAll('article.cavas-tank').forEach(decorarTanque);
     document.querySelectorAll('button.flow-collector').forEach(decorarColector);
-    hero();
+    decorarCosechas(); hero();
   }
 
+  addEventListener('scroll', () => { const g = document.querySelector('.pm-hero-glass'); if (g) g.style.setProperty('--py', Math.min(60, scrollY * 0.12) + 'px'); }, { passive: true });
   try {
     try { if (!localStorage.getItem('cavas.wowtema')) { localStorage.setItem('cavas.wowtema', '1'); if (window.App && App.Tema) App.Tema.set('dark'); } } catch (e) {}
     root.classList.add('pm-wow');

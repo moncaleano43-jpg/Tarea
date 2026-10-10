@@ -73,3 +73,6 @@ La pestaña **Hallazgos y guía** muestra el informe de hallazgos, el fundamento
 
 ## Capa «wow» (noche cervecera)
 `css/diseno-general/61-wow-css.css` y `js/interfaz/80-wow-js.js`: intro animada (una vez por sesión; clic para saltarla; `?nointro` la desactiva), tema oscuro por defecto, portada animada en Inicio, tanques y colectores dibujados como recipientes con líquido y burbujas animadas (nivel según el volumen), inclinación 3D y luz que sigue al cursor. Solo presentación: quitar sus dos líneas de `index.html` la desactiva.
+
+### Tarjetas de tanque y semáforos (ronda 2)
+Cada tarjeta de FV/SV muestra el avance hacia la recolección (barra, tiempo en tanque), volumen con barra, levadura y fecha de llenado. La recolección se muestra como **semáforo**: verde = faltan más de 24 h, amarillo = faltan menos de 24 h, rojo = vencida (se calcula contra la hora actual del equipo; constante `HORAS_PRONTO` en `80-wow-js.js`). En Levaduras, el estado de cada cosecha y de cada colector también es un semáforo (el texto queda como ayuda al pasar el cursor).
