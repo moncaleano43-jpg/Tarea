@@ -10,3 +10,6 @@
   background-size: contain !important;
   box-shadow: none !important;
 }
+
+/* Cifra: marca que combina con el entorno (ámbar líquido + azul de sistema) */
+:root:root .bot-logo,:root:root .bot-trigger-avatar,:root:root[data-theme="dark"] .bot-logo,:root:root[data-theme="dark"] .bot-trigger-avatar{background-image:url("../../assets/cifra-logo.svg") !important;border-radius:22%}

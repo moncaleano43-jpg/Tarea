@@ -85,3 +85,6 @@ Las franjas «casi sale» son las constantes `CERCA` (0,20) y `CERCA_MAX` (0,85)
 
 ## Acabado «Apple»
 `css/diseno-general/62-apple-css.css` y `js/interfaz/81-apple-js.js`: negro profundo con tarjetas gris Apple, tipografía del sistema (SF en equipos Apple, Inter en el resto), barra superior de cristal fino, portada centrada con el tanque como producto que se reduce al hacer scroll, cifras grandes, botones píldora con azul de sistema, enlaces con «›», tanques y colectores con acabado de acero y menú con iconos tipo SF Symbols. Quitar esas líneas de `index.html` revierte solo este acabado.
+
+### Detalle de tanque y marca de Cifra
+En la pantalla de cada FV/SV: cabecera tipo producto (tanque metálico con el nivel real, semáforos por especificación en cuadros de color completo), navegación de secciones en píldora de cristal, tareas del turno y ventana de cosecha con el color llenando cada cuadro. El logo de Cifra pasó a `assets/cifra-logo.svg` (C de líquido ámbar con chispa azul sobre fondo negro); se aplica en `css/asistente-cifra/99-cifra-core-brand.css`. Para volver al anterior, borrar esa última regla.

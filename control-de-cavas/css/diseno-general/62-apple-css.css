@@ -69,3 +69,61 @@ html.pm-wow .cavas-tank:hover,html.pm-wow .flow-collector:hover{box-shadow:0 30p
 @media(max-width:700px){html.pm-wow .pm-hero h1{font-size:clamp(40px,12vw,56px)}html.pm-wow .pm-st{padding:6px 8px}}
 html:root:root.pm-wow .pm-cta .btn.pm-glow{background:#0071e3!important;color:#fff!important;border:0!important;padding:12px 22px;font-size:17px}
 html:root:root.pm-wow .pm-cta .btn.pm-glow:hover{background:#0077ed!important}
+
+/* ======== Detalle de tanque (FV / SV) al estilo Apple ======== */
+html.pm-wow .fv-hero{display:grid!important;grid-template-columns:minmax(0,1.3fr) minmax(120px,200px) minmax(0,1fr);gap:clamp(16px,3vw,40px);align-items:center;padding:clamp(22px,4vw,44px)!important;border-radius:32px!important;background:linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.015)),var(--pm-glass)!important;border:1px solid var(--pm-edge)!important;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);position:relative;overflow:hidden}
+html.pm-wow .fv-hero[data-worst="red"]{border-color:rgba(255,69,58,.6)!important;box-shadow:0 30px 80px -40px rgba(255,69,58,.7)}
+html.pm-wow .fv-hero[data-worst="yellow"]{border-color:rgba(255,176,32,.6)!important}
+html.pm-wow .fv-hero[data-worst="green"]{border-color:rgba(48,209,88,.5)!important}
+html.pm-wow .fv-hero-tag{font-size:13px;font-weight:600;letter-spacing:.02em;color:#ff9f0a;text-transform:none}
+html.pm-wow .fv-hero-t{font-size:clamp(42px,6vw,80px)!important;font-weight:700;letter-spacing:-.05em;line-height:1;margin:6px 0 14px}
+html.pm-wow .fv-hero-lote{font-size:.38em;font-weight:600;color:#86868b;letter-spacing:-.01em;margin-left:8px}
+html.pm-wow .fv-hero-lineage span{border-radius:16px;background:rgba(255,255,255,.05)!important;border:1px solid rgba(255,255,255,.08)}
+html.pm-wow .fv-hero-art{width:clamp(110px,14vw,190px);aspect-ratio:100/140;justify-self:center;position:relative}
+html.pm-wow .fv-hero-art::after{content:"";position:absolute;left:50%;bottom:-18px;width:150%;height:50px;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(255,159,10,.4),transparent 70%);filter:blur(10px);z-index:-1}
+html.pm-wow .fv-hero-art .pmv{filter:drop-shadow(0 0 24px rgba(255,160,20,.55))}
+html.pm-wow .fv-hero-sems{grid-column:1/-1;margin-top:4px}
+html.pm-wow .fv-hero-sems .pmt-sem{flex:1 1 160px}
+html.pm-wow .fv-hero-r{display:grid;gap:10px;justify-items:stretch}
+html.pm-wow .fv-hero-next{border-radius:18px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
+@media(max-width:820px){html.pm-wow .fv-hero{grid-template-columns:1fr auto}html.pm-wow .fv-hero-r{grid-column:1/-1}}
+
+/* Navegación de secciones: píldoras de cristal (antes blancas y sin texto visible) */
+html.pm-wow .tank-section-nav{position:sticky;top:56px;z-index:30;padding:10px 6px;margin:0 -6px 12px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;background:rgba(22,22,23,.6);-webkit-backdrop-filter:saturate(180%) blur(18px);backdrop-filter:saturate(180%) blur(18px);border-radius:999px;border:1px solid rgba(255,255,255,.08)}
+html.pm-wow .tank-section-nav a{background:transparent!important;color:rgba(245,245,247,.75)!important;border:0!important;padding:8px 16px;font-size:14px;font-weight:500;white-space:nowrap;transition:background .3s,color .3s}
+html.pm-wow .tank-section-nav a:hover{background:rgba(255,255,255,.1)!important;color:#fff!important}
+
+/* Tareas del turno: el color llena el cuadro */
+html.pm-wow .turn-task,html.pm-wow .turn-card{border-radius:20px!important;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04)}
+html.pm-wow .turn-task b,html.pm-wow .turn-card b{color:#fff}
+html:root:root.pm-wow .turn-task.red,html:root:root.pm-wow .turn-card.red{background:linear-gradient(135deg,#c4211a,#ff4a3f)!important;border-color:#ff8a82!important}
+html:root:root.pm-wow .turn-task.yellow,html:root:root.pm-wow .turn-card.yellow{background:linear-gradient(135deg,#d98a00,#ffbf2e)!important;border-color:#ffd36e!important}
+html:root:root.pm-wow .turn-task.green,html:root:root.pm-wow .turn-card.green{background:linear-gradient(135deg,#1f9d4d,#2fd062)!important;border-color:#5df08a!important}
+html:root:root.pm-wow .turn-task.done{background:linear-gradient(135deg,rgba(48,209,88,.28),rgba(48,209,88,.08))!important;border-color:rgba(93,240,138,.5)!important}
+html:root:root.pm-wow .turn-task.neutral,html:root:root.pm-wow .turn-card.neutral{background:rgba(255,255,255,.05)!important}
+html.pm-wow .turn-task.yellow *,html.pm-wow .turn-card.yellow *{color:#241700!important}
+html.pm-wow .turn-task.red *,html.pm-wow .turn-card.red *,html.pm-wow .turn-task.green *,html.pm-wow .turn-card.green *{color:#fff!important}
+html.pm-wow .turn-task.red small,html.pm-wow .turn-card.red small,html.pm-wow .turn-task.red span,html.pm-wow .turn-card.red span,html.pm-wow .turn-task.green small,html.pm-wow .turn-card.green small,html.pm-wow .turn-card.green span{color:rgba(255,255,255,.88)!important}
+html.pm-wow .turn-task.done *{color:var(--ink)!important}
+html.pm-wow .turn-task.done small{color:var(--muted)!important}
+
+/* Ventana de cosecha: tres tramos completamente coloreados; el actual brilla */
+html:root:root.pm-wow .harvest-stages article{border-radius:20px;border:1px solid transparent;color:#fff;opacity:.55;transition:opacity .4s,transform .4s}
+html:root:root.pm-wow .harvest-stages article b,html:root:root.pm-wow .harvest-stages article span,html:root:root.pm-wow .harvest-stages article small{color:#fff!important}
+html:root:root.pm-wow .harvest-stages article.green{background:linear-gradient(135deg,#1f9d4d,#2fd062)}
+html:root:root.pm-wow .harvest-stages article.yellow{background:linear-gradient(135deg,#d98a00,#ffbf2e)}
+html:root:root.pm-wow .harvest-stages article.yellow *{color:#241700!important}
+html:root:root.pm-wow .harvest-stages article.red{background:linear-gradient(135deg,#c4211a,#ff4a3f)}
+html:root:root.pm-wow .harvest-stages article.current{opacity:1;transform:scale(1.02);box-shadow:0 14px 40px -12px rgba(255,255,255,.35)}
+html.pm-wow .harvest-window.done .harvest-stages article{opacity:.8}
+
+/* Secciones del detalle como tarjetas Apple */
+html.pm-wow .fv-detail-section,html.pm-wow .turn-priority,html.pm-wow .fv-metric{border-radius:28px!important;background:var(--pm-glass)!important;border:1px solid var(--pm-edge)!important}
+html.pm-wow .fv-detail-section .btn:not(.pri){background:rgba(255,255,255,.08);color:#fff;border:0}
+html.pm-wow .fv-detail-section .btn:not(.pri):hover{background:rgba(255,255,255,.14)}
+html:root:root.pm-wow .harvest-stages article.green{background:linear-gradient(135deg,#1f9d4d,#2fd062) !important}
+html:root:root.pm-wow .harvest-stages article.yellow{background:linear-gradient(135deg,#d98a00,#ffbf2e) !important}
+html:root:root.pm-wow .harvest-stages article.red{background:linear-gradient(135deg,#c4211a,#ff4a3f) !important}
+html:root:root.pm-wow .harvest-window .harvest-stages article{opacity:.62}
+html:root:root.pm-wow .harvest-window .harvest-stages article.current{opacity:1}
+html.pm-wow .tank-section-nav{background:rgba(22,22,23,.88)}

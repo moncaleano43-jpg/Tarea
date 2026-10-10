@@ -21,3 +21,20 @@
   }
   try { aplicar(); const o = new MutationObserver(() => { clearTimeout(aplicar.t); aplicar.t = setTimeout(aplicar, 80); }); o.observe(document.body, { childList: true, subtree: true }); } catch (e) { console.warn('apple', e); }
 })();
+
+/* Cabecera del detalle de tanque (FV/SV): tanque metálico con el nivel real y semáforos por especificación. */
+(function () {
+  'use strict';
+  function detalle() {
+    const hero = document.querySelector('main.content header.fv-hero'); if (!hero || hero.dataset.apple || !window.App || !App.Wow) return;
+    const m = /#\/(fv|sv)\/detalle\/(\d+)/.exec(location.hash); if (!m) return;
+    const r = App.Cavas.records().find((x) => x.tq === +m[2]); if (!r) return; hero.dataset.apple = '1';
+    const ferm = m[1] === 'fv'; const vol = parseFloat(String(r.volume || '').toString().replace(',', '.'));
+    const fill = isFinite(vol) && vol > 0 ? Math.min(0.97, 0.18 + vol / 5200 * 0.8) : 0.7;
+    const art = document.createElement('div'); art.className = 'fv-hero-art'; art.innerHTML = App.Wow.vessel('tank', ferm ? 'ferm' : 'mad', fill, !ferm, ferm ? '#ffa31a' : '#3aa0ff');
+    hero.querySelector('.fv-hero-l').after(art);
+    const R = App.Wow.semaforosDe(r, ferm);
+    if (R.html) { const w = document.createElement('div'); w.className = 'pmt-sems fv-hero-sems'; w.innerHTML = R.html; const st = hero.querySelector('.fv-hero-status'); (st || hero.querySelector('.fv-hero-l')).after(w); if (R.worst) hero.dataset.worst = R.worst; }
+  }
+  try { detalle(); new MutationObserver(() => { clearTimeout(detalle.t); detalle.t = setTimeout(detalle, 100); }).observe(document.body, { childList: true, subtree: true }); } catch (e) { console.warn('apple-detalle', e); }
+})();

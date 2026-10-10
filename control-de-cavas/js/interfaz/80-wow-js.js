@@ -98,14 +98,11 @@
     return 'idle';
   }
   const rangoTxt = (sp) => !sp ? '' : sp.inf != null && sp.sup != null ? `${sp.inf}–${sp.sup}` : sp.sup != null ? `máx. ${sp.sup}` : `mín. ${sp.inf}`;
-  function semaforosTanque(card, ferm) {
-    if (card.querySelector('.pmt-sems') || !window.App || !App.Cavas) return;
-    const go = card.dataset.go || ''; const m = /detalle\/(\d+)/.exec(go); if (!m) return;
-    let r = App.Cavas.records().find((x) => x.tq === +m[1]); if (!r) return;
+  function semaforosDe(r, ferm) {
     const out = []; let worst = '';
     try {
       if (App.ExcelCavas && App.ExcelCavas.enrich) r = App.ExcelCavas.enrich(r);
-      const item = (nombre, estado, valor, ayuda) => { out.push(`<div class="pmt-sem" data-s="${estado}" title="${(ayuda || '').replace(/"/g, '')}"><b>${nombre}</b><small>${valor || ''}</small></div>`); if (estado === 'red') worst = 'red'; else if (estado === 'yellow' && worst !== 'red') worst = 'yellow'; else if (estado === 'green' && !worst) worst = 'green'; }
+      const item = (nombre, estado, valor, ayuda) => { out.push(`<div class="pmt-sem" data-s="${estado}" title="${(ayuda || '').replace(/"/g, '')}"><b>${nombre}</b><small>${valor || ''}</small></div>`); if (estado === 'red') worst = 'red'; else if (estado === 'yellow' && worst !== 'red') worst = 'yellow'; else if (estado === 'green' && !worst) worst = 'green'; };
       if (ferm) {
         const a = App.FVDetail.analyze(App.FVDetail.model(r), r), h = App.TankOperations.harvest(r, a);
         const est = h.color === 'done' ? 'green' : h.color === 'neutral' ? 'idle' : h.color;
@@ -123,13 +120,18 @@
         const mt = App.PlatformRules.maturity(r);
         if (mt && mt.minimum) item('Maduración', mt.elapsed >= mt.minimum ? 'green' : 'idle', `${Math.round(mt.elapsed)} / ${Math.round(mt.minimum)} h`, `Horas de maduración frente al mínimo (${Math.round(mt.minimum)} h).`);
       }
-    } catch (e) { return; }
-    if (!out.length) return;
-    if (worst) card.dataset.worst = worst;
-    const w = document.createElement('div'); w.className = 'pmt-sems'; w.innerHTML = out.join('');
+    } catch (e) { return { html: '', worst: '' }; }
+    return { html: out.join(''), worst };
+  }
+  function semaforosTanque(card, ferm) {
+    if (card.querySelector('.pmt-sems') || !window.App || !App.Cavas) return;
+    const m = /detalle\/(\d+)/.exec(card.dataset.go || ''); if (!m) return;
+    const r = App.Cavas.records().find((x) => x.tq === +m[1]); if (!r) return;
+    const R = semaforosDe(r, ferm); if (!R.html) return;
+    if (R.worst) card.dataset.worst = R.worst;
+    const w = document.createElement('div'); w.className = 'pmt-sems'; w.innerHTML = R.html;
     const where = card.querySelector('.pmt-info'); if (where) where.before(w); else { const dl = card.querySelector('dl'); if (dl) dl.before(w); }
   }
-
   function semaforoPill(pill, estado) {
     if (pill.dataset.pms) return; pill.dataset.pms = '1';
     pill.dataset.s = estado; pill.title = pill.textContent.trim();
@@ -236,6 +238,7 @@
   }
 
   addEventListener('scroll', () => { const g = document.querySelector('.pm-hero-glass'); if (g) { const k = Math.min(1, scrollY / 700); g.style.setProperty('--py', (scrollY * 0.18).toFixed(1) + 'px'); g.style.setProperty('--hs', (1 - k * 0.22).toFixed(3)); g.style.setProperty('--ho', (1 - k * 0.7).toFixed(3)); } }, { passive: true });
+  window.App = window.App || {}; App.Wow = { vessel, semaforosDe };
   try {
     try { if (!localStorage.getItem('cavas.wowtema')) { localStorage.setItem('cavas.wowtema', '1'); if (window.App && App.Tema) App.Tema.set('dark'); } } catch (e) {}
     root.classList.add('pm-wow');
