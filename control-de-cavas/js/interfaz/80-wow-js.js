@@ -137,6 +137,18 @@
     pill.dataset.s = estado; pill.title = pill.textContent.trim();
     const box = pill.closest('article, button.flow-collector'); if (box) box.dataset.s = estado;
   }
+  /* Explosión en colectores en rojo: ondas de choque, chispas y destello. */
+  function explosion(btn) {
+    if (reduce || btn.querySelector('.pm-boom')) return;
+    const v = btn.querySelector('.pmv-col'); if (!v) return;
+    const b = document.createElement('span'); b.className = 'pm-boom'; b.setAttribute('aria-hidden', 'true');
+    let sp = ''; for (let i = 0; i < 16; i++) { const a = Math.round(i * 22.5 + (i % 2 ? 6 : -4)); sp += `<i style="--a:${a}deg;--d:${46 + (i * 37) % 42}px;--s:${(3 + (i % 3) * 1.6).toFixed(1)}px;--t:${(0.85 + (i % 4) * 0.08).toFixed(2)}s"></i>`; }
+    b.innerHTML = '<u class="f"></u><u class="r1"></u><u class="r2"></u><u class="r3"></u>' + sp;
+    btn.appendChild(b);
+    const place = () => { if (!document.contains(btn)) return; const r = v.getBoundingClientRect(), q = btn.getBoundingClientRect(); b.style.left = (r.left - q.left + r.width / 2) + 'px'; b.style.top = (r.top - q.top + r.height * 0.55) + 'px'; };
+    requestAnimationFrame(place); addEventListener('resize', place);
+    btn.classList.add('pm-bang');
+  }
   function decorarCosechas() {
     document.querySelectorAll('.harvest-list article').forEach((a) => {
       const pill = a.querySelector('.turn-pill'); if (!pill) return;
@@ -147,6 +159,7 @@
       const pill = b.querySelector('.flow-collector-top .turn-pill'); if (!pill) return;
       const st = b.dataset.vesselStatus; const e = st === 'late' ? 'red' : st === 'soon' ? 'yellow' : st === 'healthy' ? 'green' : st === 'recover' || st === 'discard' ? 'yellow' : /fuera|vencid/i.test(pill.textContent) ? 'red' : 'idle';
       semaforoPill(pill, e);
+      if (e === 'red') explosion(b);
     });
   }
 
