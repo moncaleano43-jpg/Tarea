@@ -142,7 +142,7 @@
     if (reduce || btn.querySelector('.pm-boom')) return;
     const v = btn.querySelector('.pmv-col'); if (!v) return;
     const b = document.createElement('span'); b.className = 'pm-boom'; b.setAttribute('aria-hidden', 'true');
-    let sp = ''; for (let i = 0; i < 16; i++) { const a = Math.round(i * 22.5 + (i % 2 ? 6 : -4)); sp += `<i style="--a:${a}deg;--d:${46 + (i * 37) % 42}px;--s:${(3 + (i % 3) * 1.6).toFixed(1)}px;--t:${(0.85 + (i % 4) * 0.08).toFixed(2)}s"></i>`; }
+    let sp = ''; for (let i = 0; i < 26; i++) { const a = Math.round(i * (360 / 26) + (i % 2 ? 5 : -5)); sp += `<i style="--a:${a}deg;--d:${44 + (i * 37) % 52}px;--s:${(2.6 + (i % 4) * 1.3).toFixed(1)}px;--dl:${(-(i * 0.071)).toFixed(2)}s"></i>`; }
     b.innerHTML = '<u class="f"></u><u class="r1"></u><u class="r2"></u><u class="r3"></u>' + sp;
     btn.appendChild(b);
     const place = () => { if (!document.contains(btn)) return; const r = v.getBoundingClientRect(), q = btn.getBoundingClientRect(); b.style.left = (r.left - q.left + r.width / 2) + 'px'; b.style.top = (r.top - q.top + r.height * 0.55) + 'px'; };
