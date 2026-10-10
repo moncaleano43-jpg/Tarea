@@ -137,15 +137,32 @@
     pill.dataset.s = estado; pill.title = pill.textContent.trim();
     const box = pill.closest('article, button.flow-collector'); if (box) box.dataset.s = estado;
   }
-  /* Explosión en colectores en rojo: ondas de choque, chispas y destello. */
+  /* Explosión en colectores en rojo: el colector estalla, sus partes salen volando y se rearma, sin parar. */
+  const PIEZAS = [
+    '<path d="M2 4 L15 1 L19 11 L7 19Z" fill="#c9d0dc" stroke="#fff" stroke-opacity=".6"/>',
+    '<path d="M3 4 H14 V17" fill="none" stroke="#aab3c4" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>',
+    '<path d="M3 15 A8.5 8.5 0 0 1 17 7" fill="none" stroke="#dfe4ee" stroke-width="3" stroke-linecap="round"/>',
+    '<path d="M4 2 H16 L12 19 H8Z" fill="#9aa4b6" stroke="#fff" stroke-opacity=".55"/>',
+    '<rect x="3" y="6" width="14" height="8" rx="2" fill="#7c8699" stroke="#e6eaf2" stroke-opacity=".7"/>',
+    '<path d="M3 11 Q10 1 17 11 Q10 19 3 11Z" fill="#eed59a"/>',
+    '<circle cx="10" cy="10" r="6" fill="#e8c77a"/>',
+    '<path d="M2 17 L8 3 L11 9 L18 5 L14 18Z" fill="#b4bccb" stroke="#fff" stroke-opacity=".5"/>'
+  ];
   function explosion(btn) {
     if (reduce || btn.querySelector('.pm-boom')) return;
     const v = btn.querySelector('.pmv-col'); if (!v) return;
     const b = document.createElement('span'); b.className = 'pm-boom'; b.setAttribute('aria-hidden', 'true');
-    let sp = ''; for (let i = 0; i < 26; i++) { const a = Math.round(i * (360 / 26) + (i % 2 ? 5 : -5)); sp += `<i style="--a:${a}deg;--d:${44 + (i * 37) % 52}px;--s:${(2.6 + (i % 4) * 1.3).toFixed(1)}px;--dl:${(-(i * 0.071)).toFixed(2)}s"></i>`; }
-    b.innerHTML = '<u class="f"></u><u class="r1"></u><u class="r2"></u><u class="r3"></u>' + sp;
+    let sp = '', deb = '', hum = '';
+    for (let i = 0; i < 20; i++) { const a = Math.round(i * 18 + (i % 2 ? 5 : -5)); sp += `<i style="--a:${a}deg;--d:${50 + (i * 37) % 70}px;--s:${(2.6 + (i % 4) * 1.2).toFixed(1)}px;--dl:${(i % 5) * 0.012}s"></i>`; }
+    for (let i = 0; i < 16; i++) {
+      const ang = (i / 16) * Math.PI * 2 + (i % 3) * 0.2, dist = 120 + (i * 53) % 150, sz = 15 + (i * 7) % 20;
+      const dx = Math.round(Math.cos(ang) * dist), dy = Math.round(Math.sin(ang) * dist * 0.75 - 50);
+      deb += `<em style="--dx:${dx}px;--dy:${dy}px;--r:${(i % 2 ? 1 : -1) * (260 + (i * 71) % 420)}deg;--z:${sz}px;--dl:${(i % 4) * 0.015}s"><svg viewBox="0 0 20 20">${PIEZAS[i % PIEZAS.length]}</svg></em>`;
+    }
+    for (let i = 0; i < 5; i++) hum += `<b style="--x:${(i - 2) * 22}px;--w:${34 + (i % 3) * 14}px;--dl:${i * 0.05}s"></b>`;
+    b.innerHTML = '<u class="f"></u><u class="r1"></u><u class="r2"></u><u class="r3"></u>' + hum + sp + deb;
     btn.appendChild(b);
-    const place = () => { if (!document.contains(btn)) return; const r = v.getBoundingClientRect(), q = btn.getBoundingClientRect(); b.style.left = (r.left - q.left + r.width / 2) + 'px'; b.style.top = (r.top - q.top + r.height * 0.55) + 'px'; };
+    const place = () => { if (!document.contains(btn)) return; const r = v.getBoundingClientRect(), q = btn.getBoundingClientRect(); b.style.left = (r.left - q.left + r.width / 2) + 'px'; b.style.top = (r.top - q.top + r.height * 0.5) + 'px'; };
     requestAnimationFrame(place); addEventListener('resize', place);
     btn.classList.add('pm-bang');
   }

@@ -231,21 +231,31 @@ html:root:root button.flow-collector[data-s="yellow"]{background:linear-gradient
 html:root:root button.flow-collector[data-s="green"]{background:linear-gradient(160deg,rgba(48,209,88,.55),rgba(20,130,55,.2) 75%)!important}
 html:root:root button.flow-collector[data-s] .collector-slots span{background:rgba(0,0,0,.28)!important}
 
-/* ===== Explosión CONSTANTE de colector en rojo ===== */
-.pm-boom{position:absolute;width:0;height:0;pointer-events:none;z-index:5}
-.pm-boom u{position:absolute;left:0;top:0;border-radius:50%;transform:translate(-50%,-50%) scale(0);opacity:0;text-decoration:none}
-.pm-boom .f{width:140px;height:140px;background:radial-gradient(closest-side,#fff,#ffd36e 22%,#ff5a2a 52%,transparent 74%);mix-blend-mode:screen;animation:pm-flash .55s ease-in-out infinite alternate}
-.pm-boom .r1,.pm-boom .r2,.pm-boom .r3{width:84px;height:84px;border:3px solid rgba(255,120,70,.95);box-shadow:0 0 16px rgba(255,69,58,.8),inset 0 0 12px rgba(255,150,60,.5);animation:pm-ring 1.8s cubic-bezier(.12,.7,.2,1) infinite}
-.pm-boom .r2{animation-delay:-.6s;border-color:rgba(255,200,90,.85)}
-.pm-boom .r3{animation-delay:-1.2s;border-color:rgba(255,69,58,.65)}
-.pm-boom i{position:absolute;left:0;top:0;width:var(--s,4px);height:var(--s,4px);margin:calc(var(--s,4px) / -2);border-radius:50%;background:radial-gradient(circle,#fff,#ffb020 60%,#ff453a);box-shadow:0 0 8px #ff8a3d,0 0 14px rgba(255,69,58,.8);opacity:0;animation:pm-spark 1.85s cubic-bezier(.15,.8,.3,1) infinite var(--dl,0s);transform:rotate(var(--a)) translateX(0)}
-@keyframes pm-flash{from{transform:translate(-50%,-50%) scale(.45);opacity:.5}to{transform:translate(-50%,-50%) scale(.85);opacity:.85}}
-@keyframes pm-ring{0%{transform:translate(-50%,-50%) scale(.2);opacity:0}6%{opacity:1}70%{opacity:.25}100%{transform:translate(-50%,-50%) scale(3.3);opacity:0}}
-@keyframes pm-spark{0%{opacity:0;transform:rotate(var(--a)) translateX(2px) scale(1)}8%{opacity:1}70%{opacity:.8;transform:rotate(var(--a)) translateX(var(--d)) scale(.7)}100%{opacity:0;transform:rotate(var(--a)) translateX(calc(var(--d) * 1.3)) scale(0)}}
-/* Vibración continua de la tarjeta y el recipiente al rojo vivo */
-.flow-collector.pm-bang{animation:pm-shake .22s linear infinite}
-@keyframes pm-shake{0%{translate:0 0}25%{translate:-1.5px 1px}50%{translate:1.5px -1px}75%{translate:-1px -1.5px}100%{translate:0 0}}
-.flow-collector.pm-bang .pmv-col{animation:pm-hot .6s ease-in-out infinite alternate}
-@keyframes pm-hot{from{filter:drop-shadow(0 0 10px rgba(255,69,58,.8)) brightness(1)}to{filter:drop-shadow(0 0 26px #ffd36e) drop-shadow(0 0 38px rgba(255,90,40,.95)) brightness(1.5)}}
-.flow-collector.pm-bang{overflow:visible!important}
-@media (prefers-reduced-motion:reduce){.pm-boom{display:none}.flow-collector.pm-bang,.flow-collector.pm-bang .pmv-col{animation:none}}
+/* ===== Explosión CONSTANTE de colector en rojo: estalla, vuelan sus piezas, se rearma ===== */
+.flow-collector.pm-bang{position:relative;z-index:6;overflow:visible!important}
+.pm-boom{--T:3.6s;position:absolute;width:0;height:0;pointer-events:none;z-index:7}
+.pm-boom u,.pm-boom i,.pm-boom em,.pm-boom b{position:absolute;left:0;top:0;opacity:0;text-decoration:none;font-style:normal}
+.pm-boom u{border-radius:50%;transform:translate(-50%,-50%) scale(0)}
+.pm-boom .f{width:170px;height:170px;background:radial-gradient(closest-side,#fff,#ffe08a 20%,#ff6a2a 50%,rgba(255,40,20,.4) 66%,transparent 78%);mix-blend-mode:screen;animation:pm-flash var(--T) ease-out infinite}
+.pm-boom .r1,.pm-boom .r2,.pm-boom .r3{width:80px;height:80px;border:3px solid rgba(255,150,70,.95);box-shadow:0 0 18px rgba(255,69,58,.85),inset 0 0 12px rgba(255,170,60,.6);animation:pm-ring var(--T) cubic-bezier(.1,.7,.2,1) infinite}
+.pm-boom .r2{animation-delay:.09s;border-color:rgba(255,215,110,.9)}
+.pm-boom .r3{animation-delay:.2s;border-color:rgba(255,69,58,.7)}
+.pm-boom i{width:var(--s,4px);height:var(--s,4px);margin:calc(var(--s,4px) / -2);border-radius:50%;background:radial-gradient(circle,#fff,#ffb020 60%,#ff453a);box-shadow:0 0 8px #ff8a3d,0 0 14px rgba(255,69,58,.8);animation:pm-spark var(--T) cubic-bezier(.15,.8,.3,1) infinite var(--dl,0s)}
+.pm-boom b{width:var(--w,40px);height:var(--w,40px);margin:-20px 0 0 -20px;border-radius:50%;background:radial-gradient(closest-side,rgba(70,60,60,.85),rgba(40,36,36,.0) 72%);animation:pm-smoke var(--T) ease-out infinite var(--dl,0s)}
+/* Piezas del colector que salen disparadas */
+.pm-boom em{width:var(--z,20px);height:var(--z,20px);margin:calc(var(--z,20px) / -2);filter:drop-shadow(0 0 5px rgba(255,110,50,.9)) drop-shadow(0 2px 3px rgba(0,0,0,.5));animation:pm-debris var(--T) cubic-bezier(.2,.7,.35,1) infinite var(--dl,0s)}
+.pm-boom em svg{display:block;width:100%;height:100%;overflow:visible}
+@keyframes pm-debris{
+ 0%,37%{opacity:0;transform:translate(0,0) rotate(0) scale(.3)}
+ 38%{opacity:1;transform:translate(0,0) rotate(0) scale(1.1)}
+ 56%{opacity:1;transform:translate(calc(var(--dx) * .8),var(--dy)) rotate(calc(var(--r) * .55)) scale(1)}
+ 86%{opacity:.95;transform:translate(var(--dx),calc(var(--dy) + 130px)) rotate(var(--r)) scale(.95)}
+ 94%,100%{opacity:0;transform:translate(calc(var(--dx) * 1.05),calc(var(--dy) + 190px)) rotate(calc(var(--r) * 1.1)) scale(.8)}}
+@keyframes pm-flash{0%,36%{transform:translate(-50%,-50%) scale(.1);opacity:0}38%{transform:translate(-50%,-50%) scale(.55);opacity:1}46%{transform:translate(-50%,-50%) scale(1.15);opacity:.95}62%,100%{transform:translate(-50%,-50%) scale(1.5);opacity:0}}
+@keyframes pm-ring{0%,37%{transform:translate(-50%,-50%) scale(.2);opacity:0}39%{opacity:1}74%{opacity:.2}84%,100%{transform:translate(-50%,-50%) scale(2.9);opacity:0}}
+@keyframes pm-spark{0%,37%{opacity:0;transform:rotate(var(--a)) translateX(0) scale(1)}39%{opacity:1}70%{opacity:.85;transform:rotate(var(--a)) translateX(var(--d)) scale(.7)}88%,100%{opacity:0;transform:rotate(var(--a)) translateX(calc(var(--d) * 1.5)) scale(0)}}
+@keyframes pm-smoke{0%,38%{opacity:0;transform:translate(var(--x,0),0) scale(.3)}46%{opacity:.8}100%{opacity:0;transform:translate(var(--x,0),-90px) scale(3)}}
+/* El colector estalla (se esconde) y se vuelve a armar */
+.flow-collector.pm-bang .pmv-col{animation:pm-vessel 3.6s ease-in-out infinite}
+@keyframes pm-vessel{0%{opacity:1;transform:scale(.8);filter:drop-shadow(0 0 8px rgba(255,69,58,.7))}8%{opacity:1;transform:none}30%{filter:drop-shadow(0 0 16px rgba(255,120,60,.95)) brightness(1.25)}36%{opacity:1;transform:scale(1.1);filter:drop-shadow(0 0 30px #fff) brightness(2.2)}38%,86%{opacity:0;transform:scale(1.3)}96%{opacity:1;transform:scale(.8);filter:drop-shadow(0 0 8px rgba(255,69,58,.7))}100%{opacity:1;transform:scale(.8)}}
+@media (prefers-reduced-motion:reduce){.pm-boom{display:none}.flow-collector.pm-bang .pmv-col{animation:none}}
